@@ -19,7 +19,7 @@ struct Answer {
     auto iter = log.begin();
     for (auto i = 0; i < tile_count; i++){
       if (iter->id == i){
-        ofs << iter->x << ' ' << iter->y << ' ' << "HT"[iter->inverse] << ' ' << (iter->rotate ^ iter->inverse) * 90;
+        ofs << iter->x << ' ' << iter->y << ' ' << "HT"[iter->inverse] << ' ' << iter->rotate * 90;
         ++iter;
       }
       ofs << "\n";
