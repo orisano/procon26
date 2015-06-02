@@ -12,7 +12,6 @@ struct HomeImpl {
 };
 
 typedef HomeImpl<Board, Tile> Home;
-typedef HomeImpl<GBoard, GTile> GHome;
 
 }
 
