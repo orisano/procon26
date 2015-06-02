@@ -10,14 +10,22 @@ struct Answer {
   std::deque<Action> log;
   void push(Action action) { log.emplace_back(action);  };
   void pop() { log.pop_back(); };
-  void save(const std::string& filepath)
+  void save(const std::string& filepath, int tile_count)
   {
     std::sort(log.begin(), log.end(), [](const Action& a, const Action& b) { return a.id < b.id; });
+    log.emplace_back(Action(-1));
 
     std::ofstream ofs(filepath);
-    for (const auto& action : log) {
-      ofs << action.id << " " << action.x << " " << action.y << " " << action.rotate << " " << action.inverse << std::endl;
+    auto iter = log.begin();
+    for (auto i = 0; i < tile_count; i++){
+      if (iter->id == i){
+        ofs << action.x << ' ' << action.y << ' ' << "HT"[action.inverse] << ' ' << action.rotate * 90;
+        ++iter;
+      }
+      ofs << "\n";
     }
+    ofs.close();
+    log.pop_back();
   }
 };
 
