@@ -1,5 +1,10 @@
 #pragma once
 
+namespace square_internal {
+const int dx[] = {1, -1, 0, 0};
+const int dy[] = {0, 0, -1, 1};
+}
+
 namespace procon26 {
 
 template<typename T, int N>
@@ -74,46 +79,85 @@ struct Square {
     return iter;
   }
 
+  inline bool inBounds(int x, int y) const
+  {
+    return 0 <= x && x < N && 0 <= y && y < N;
+  }
+
   cell_type* operator[](int index)
   {
+    assert(0 <= index && index < N);
     return data[index];
   }
 
   cell_type at(int x, int y) const
   {
+    assert(inBounds(x, y));
     return data[y][x];
   }
 };
 
-typedef Square<int, 8> Tile;
+struct Tile : Square<int, 8> {
+  typedef Square<int, 8> Derived;
+
+  Tile() : cell_value(1) {}
+
+  void fill(cell_type c)
+  {
+    cell_value = c;
+  }
+
+  cell_type at(int x, int y) const
+  {
+    assert(inBounds(x, y));
+    return data[y][x] * cell_value;
+  }
+
+  cell_type cell_value;
+};
 
 struct Board : Square<int, 32> {
   typedef Square<int, 32> Derived;
 
+  Board() : min_cell_(512) {}
+
   void put(const Tile& tile, int x, int y)
   {
     assert(puttable(tile, x, y));
+    auto cv = tile.cell_value;
     for (auto yi = 0; yi < Tile::SIZE; ++yi) {
       for (auto xi = 0; xi < Tile::SIZE; ++xi) {
         if (tile.data[yi][xi] == 0) continue;
         const auto nx = x + xi, ny = y + yi;
-        data[ny][nx] = tile.data[yi][xi];
+        data[ny][nx] = cv;
       }
     }
+    min_cell_ = std::min(min_cell_, cv);
   }
 
   bool puttable(const Tile& tile, int x, int y) const
   {
+    auto min_cv = 511;
     for (auto yi = 0; yi < Tile::SIZE; ++yi) {
       for (auto xi = 0; xi < Tile::SIZE; ++xi) {
         if (tile.data[yi][xi] == 0) continue;
-        const auto nx = x + xi, ny = y + yi;
-        if (nx < 0 || SIZE <= nx || ny < 0 || SIZE <= ny) return false;
-        if (data[ny][nx] != 0) return false;
+        const auto cx = x + xi, cy = y + yi;
+        if (!inBounds(cx, cy)) return false;
+        if (data[cy][cx] != 0) return false;
+        for (auto d = 0; d < 4; d++) {
+          const auto nx = cx + square_internal::dx[d], ny = cy + square_internal::dy[d];
+          if (!inBounds(nx, ny)) continue;
+          const auto c = data[ny][nx];
+          if (c <= 1) continue;
+          min_cv = std::min(min_cv, c);
+        }
       }
     }
-    return true;
+    return min_cell_ == 512 || min_cv == min_cell_ || min_cv < tile.cell_value;
   }
+
+private:
+  cell_type min_cell_;
 };
 
 }
