@@ -4,9 +4,11 @@ namespace procon26 {
 
 template<typename T, int N>
 struct Square {
-  typedef T cell_t;
+  typedef T cell_type;
+  typedef T this_type;
+  static const int SIZE = N;
 
-  cell_t data[N][N];
+  cell_type data[N][N];
 
   Square() {}
 
@@ -15,7 +17,7 @@ struct Square {
     std::memset(data, 0, sizeof(data));
   }
 
-  void copy(const Square<T, N>& square)
+  void copy(const this_type& square)
   {
     std::memcpy(data, square.data, sizeof(data));
   }
@@ -26,7 +28,7 @@ struct Square {
   */
   void reverse()
   {
-    cell_t reverse_buffer[N][N];
+    cell_type reverse_buffer[N][N];
     for (auto y = 0; y < N; ++y) {
       for (auto x = 0; x < N; ++x) {
         reverse_buffer[y][x] = data[y][N - x - 1];
@@ -41,7 +43,7 @@ struct Square {
   */
   void rotate()
   {
-    cell_t rotate_buffer[N][N];
+    cell_type rotate_buffer[N][N];
     for (auto y = 0; y < N; ++y) {
       for (auto x = 0; x < N; ++x) {
         rotate_buffer[y][x] = data[N - x - 1][y];
@@ -50,7 +52,7 @@ struct Square {
     std::memcpy(data, rotate_buffer, sizeof(data));
   }
 
-  void fill(cell_t c)
+  void fill(cell_type c)
   {
     for (auto y = 0; y < N; ++y) {
       for (auto x = 0; x < N; ++x) {
@@ -58,33 +60,6 @@ struct Square {
         data[y][x] = c;
       }
     }
-  }
-
-  template<int M>
-  void put(const Square<T, M>& square, int x, int y)
-  {
-    assert(puttable(square, x, y));
-    for (auto yi = 0; yi < M; ++yi) {
-      for (auto xi = 0; xi < M; ++xi) {
-        if (square.data[yi][xi] == 0) continue;
-        const auto nx = x + xi, ny = y + yi;
-        data[ny][nx] = square.data[yi][xi];
-      }
-    }
-  }
-
-  template<int M>
-  bool puttable(const Square<T, M>& square, int x, int y) const
-  {
-    for (auto yi = 0; yi < M; ++yi) {
-      for (auto xi = 0; xi < M; ++xi) {
-        if (square.data[yi][xi] == 0) continue;
-        const auto nx = x + xi, ny = y + yi;
-        if (nx < 0 || N <= nx || ny < 0 || N <= ny) return false;
-        if (data[ny][nx] != 0) return false;
-      }
-    }
-    return true;
   }
 
   template<typename ConstIterator>
@@ -99,18 +74,46 @@ struct Square {
     return iter;
   }
 
-  cell_t* operator[](int index)
+  cell_type* operator[](int index)
   {
     return data[index];
   }
 
-  cell_t at(int x, int y) const
+  cell_type at(int x, int y) const
   {
     return data[y][x];
   }
 };
 
-typedef Square<int, 32> Board;
 typedef Square<int, 8> Tile;
+
+struct Board : Square<int, 32> {
+  typedef Square<int, 32> Derived;
+
+  void put(const Tile& tile, int x, int y)
+  {
+    assert(puttable(tile, x, y));
+    for (auto yi = 0; yi < Tile::SIZE; ++yi) {
+      for (auto xi = 0; xi < Tile::SIZE; ++xi) {
+        if (tile.data[yi][xi] == 0) continue;
+        const auto nx = x + xi, ny = y + yi;
+        data[ny][nx] = tile.data[yi][xi];
+      }
+    }
+  }
+
+  bool puttable(const Tile& tile, int x, int y) const
+  {
+    for (auto yi = 0; yi < Tile::SIZE; ++yi) {
+      for (auto xi = 0; xi < Tile::SIZE; ++xi) {
+        if (tile.data[yi][xi] == 0) continue;
+        const auto nx = x + xi, ny = y + yi;
+        if (nx < 0 || SIZE <= nx || ny < 0 || SIZE <= ny) return false;
+        if (data[ny][nx] != 0) return false;
+      }
+    }
+    return true;
+  }
+};
 
 }
