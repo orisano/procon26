@@ -1,5 +1,6 @@
 #pragma once
 #include "Square.hpp"
+#include "Action.hpp"
 #include <vector>
 
 namespace procon26 {
@@ -9,6 +10,7 @@ struct HomeImpl {
   BoardType board;
   std::vector<TileType> tiles;
   void load(const std::string& filepath);
+  TileType toTile(Action action) const;
 };
 
 typedef HomeImpl<Board, Tile> Home;

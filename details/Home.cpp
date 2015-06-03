@@ -1,4 +1,5 @@
 #include "../Home.hpp"
+#include "../Action.hpp"
 #include <fstream>
 #include <string>
 
@@ -23,6 +24,15 @@ void HomeImpl<BoardType, TileType>::load(const std::string& filepath)
     tiles.emplace_back();
     iter = tiles.back().load(iter);
   }
+}
+
+template<typename BoardType, typename TileType>
+TileType HomeImpl<BoardType, TileType>::toTile(Action action) const
+{
+  auto tile = tiles[action.id];
+  if (action.inverse) tile.reverse();
+  for (auto i = 0; i < action.rotate; ++i) tile.rotate();
+  return tile;
 }
 
 }
