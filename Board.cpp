@@ -36,7 +36,7 @@ bool Board::puttable(const Tile& tile, int x, int y) const
       if (!inBounds(cx, cy)) return false;
       if (data[cy][cx] != 0) return false;
       for (auto d = 0; d < 4; d++) {
-        const auto nx = dx[d], ny = cy + dy[d];
+        const auto nx = cx + dx[d], ny = cy + dy[d];
         if (!inBounds(nx, ny)) continue;
         const auto c = data[ny][nx];
         if (c <= 1) continue;

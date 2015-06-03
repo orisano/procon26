@@ -32,6 +32,7 @@ TileType HomeImpl<BoardType, TileType>::toTile(Action action) const
   auto tile = tiles[action.id];
   if (action.inverse) tile.reverse();
   for (auto i = 0; i < action.rotate; ++i) tile.rotate();
+  tile.fill(action.id + 2);
   return tile;
 }
 

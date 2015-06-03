@@ -1,6 +1,8 @@
 #pragma once
 #include "Square.hpp"
 #include "Action.hpp"
+#include "Board.hpp"
+#include "Tile.hpp"
 #include <vector>
 
 namespace procon26 {
