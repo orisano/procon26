@@ -23,11 +23,11 @@ struct ZobristHash {
     }
   }
   template<typename TT>
-  hash_t hash(TT data[H][W]){
+  hash_t hash(const TT& data){
     hash_t r = 0;
-    for (int h = 0; h < H; h++){
-      for (int w = 0; w < W; w++){
-        r ^= data[h][w][data[h][w]];
+    for (int y = 0; y < H; y++){
+      for (int x = 0; x < W; x++){
+        r ^= rands[y][x][data.at(x, y) > 0];
       }
     }
     return r;
@@ -36,14 +36,14 @@ struct ZobristHash {
   void output(OS& st){
     st << "#ifndef INCLUDE_HASH_VALUE\n";
     st << "#define INCLUDE_HASH_VALUE\n";
-    st << "namespace orislib {\n";
+    st << "namespace orliv {\n";
     st << typeid(T).name() << " hash_v[" << H << "][" << W << "][" << STATE << "] = {\n";
     for (int h = 0; h < H; h++){
       st << "{";
       for (int w = 0; w < W; w++){
         st << "{";
         for (int s = 0; s < STATE; s++){
-          st << data[h][w][s] << ",";
+          st << rands[h][w][s] << ",";
         }
         st << "},\n";
       }

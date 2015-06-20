@@ -9,6 +9,7 @@ struct Square {
 
   static const int SIZE = N;
   cell_type data[N][N];
+  short zk;
 
   Square();
   void initialize();

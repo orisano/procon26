@@ -1,10 +1,11 @@
 #pragma once
 #include "Square.hpp"
+#include <cstdint>
 
 namespace procon26 {
 
-struct Tile : Square<int, 8> {
-  typedef Square<int, 8> Derived;
+struct Tile : Square<std::uint16_t, 8> {
+  typedef Square<std::uint16_t, 8> Derived;
 
   cell_type cell_value;
 

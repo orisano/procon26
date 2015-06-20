@@ -6,8 +6,8 @@
 namespace procon26 {
 namespace takumi {
 
-struct Test : Takumi {
-  Answer solve(const Home& home, const int millsec);
+struct Beam : Takumi {
+  Answer solve(const Home& home, const int millisec);
 };
 
 }

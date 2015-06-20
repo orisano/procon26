@@ -3,7 +3,7 @@
 
 namespace procon26 {
 
-Tile::Tile(): cell_value(1)
+Tile::Tile() : cell_value(1)
 {}
 
 void Tile::fill(cell_type c)

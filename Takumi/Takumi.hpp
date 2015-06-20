@@ -7,7 +7,7 @@ namespace procon26 {
 namespace takumi {
 
 struct Takumi {
-  virtual Answer solve(const Home& home, int millsec)=0;
+  virtual Answer solve(const Home& home, int millisec)=0;
 };
 
 }

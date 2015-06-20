@@ -1,0 +1,84 @@
+#include "BitBoard.hpp"
+
+namespace procon26 {
+
+BitBoard::cell_type BitBoard::initial[BitBoard::SIZE];
+BitBoard::size_type BitBoard::initial_zk;
+
+BitBoard::BitBoard() {
+    std::memset(initial, 0, sizeof(initial));
+    initial_zk = 0;
+    std::memset(data, 0, sizeof(data));
+    zk = 0;
+}
+
+BitBoard::BitBoard(const Board &board) {
+    std::memset(initial, 0, sizeof(initial));
+    initial_zk = 0;
+    std::memset(data, 0, sizeof(data));
+    zk = 0;
+
+    const cell_type ONE = 1;
+    for (int y = 0; y < SIZE; y++){
+        for (int x = 0; x < SIZE; x++){
+            auto c = board.at(x, y);
+            if (!c) continue;
+            if (c == 1) initial[y] |= ONE << x, initial_zk++;
+            else data[y] |= ONE << x, zk++;
+        }
+    }
+}
+
+bool BitBoard::inBounds(int x, int y) const {
+    return 0 <= x && x < SIZE && 0 <= y && y < SIZE;
+}
+
+BitBoard::cell_type BitBoard::at(int x, int y) const {
+    assert(inBounds(x, y));
+    return (data[y] >> x) & 1;
+}
+
+bool BitBoard::puttable(const BitTile &tile, int x, int y) const {
+    using mask_type = typename BitTile::mask_type;
+    const mask_type zero = 0;
+
+    if (tile.zk > blanks()) return false;
+
+    mask_type conflict_mask[BitTile::SIZE];
+    for (int i = 0; i < BitTile::SIZE; i++) {
+        conflict_mask[i] = ~((inBounds(0, y + i) ? ~(data[y + i] | initial[y + i]) : zero) << 10);
+    }
+
+    mask_type conflict = 0;
+    for (int i = 0; i < BitTile::SIZE; i++) {
+        conflict |= conflict_mask[i] & (static_cast<mask_type>(tile.data[i]) << (10 + x));
+    }
+    if (conflict) return false;
+
+    if (!zk) return true;
+
+    mask_type neighbor_mask[BitTile::MASK_SIZE];
+    for (int i = 0; i < BitTile::MASK_SIZE; i++) {
+        neighbor_mask[i] = (inBounds(0, y + i - 1) ? data[y + i - 1] : zero) << 10;
+    }
+
+    mask_type neighbor = 0;
+    for (int i = 0; i < BitTile::MASK_SIZE; i++) {
+        neighbor |= neighbor_mask[i] & (tile.mask[i] << (10 + x - 1));
+    }
+    return neighbor != zero;
+}
+
+void BitBoard::put(const BitTile &tile, int x, int y) {
+    assert(puttable(tile, x, y));
+    for (int i = std::max<int>(y, 0), size = std::min<int>(y + BitTile::SIZE, SIZE); i < size; i++){
+        data[i] |= (static_cast<BitTile::mask_type>(tile.data[i - y]) << (10 + x)) >> 10;
+    }
+    zk += tile.zk;
+}
+
+BitBoard::size_type BitBoard::blanks() const {
+    return SIZE * SIZE - zk - initial_zk;
+}
+
+}

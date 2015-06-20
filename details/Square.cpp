@@ -1,11 +1,12 @@
 #include "../Square.hpp"
 #include <algorithm>
 #include <cassert>
+#include <cstring>
 
 namespace procon26 {
   
 template<typename T, int N>
-Square<T, N>::Square() {}
+Square<T, N>::Square(){}
 
 template<typename T, int N>
 void Square<T, N>::initialize()
@@ -67,9 +68,11 @@ template<typename T, int N>
 template<typename ConstIterator>
 ConstIterator Square<T, N>::load(ConstIterator iter)
 {
+  zk = 0;
   for (auto y = 0; y < N; ++y) {
     for (auto x = 0; x < N; ++x) {
       data[y][x] = ((*iter)[x] == '1');
+      zk += !data[y][x];
     }
     ++iter;
   }

@@ -1,6 +1,7 @@
 #pragma once
 #include "Action.hpp"
 #include <deque>
+#include <string>
 
 namespace procon26 {
 
