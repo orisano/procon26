@@ -7,6 +7,7 @@
 #include "BitTile.hpp"
 
 namespace procon26 {
+namespace board {
 
 struct BitBoard {
     using cell_type = std::uint32_t;
@@ -20,12 +21,19 @@ struct BitBoard {
     size_type zk;
 
     BitBoard();
-    explicit BitBoard(const Board& board);
+
+    explicit BitBoard(const Board &board);
+
     cell_type at(int x, int y) const;
-    bool puttable(const BitTile& tile, int x, int y) const;
-    void put(const BitTile& tile, int x, int y);
+
+    bool canPut(const tile::BitTile &tile, int x, int y) const;
+
+    void put(const tile::BitTile &tile, int x, int y);
+
     size_type blanks() const;
+
     bool inBounds(int x, int y) const;
 };
 
+}
 }

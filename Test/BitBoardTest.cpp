@@ -29,6 +29,8 @@ inline void dumpData(const T& data){
 
 using namespace std;
 using namespace procon26;
+using namespace procon26::tile;
+using namespace procon26::board;
 
 int main()
 {

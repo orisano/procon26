@@ -5,6 +5,7 @@
 #include "Tile.hpp"
 
 namespace procon26 {
+namespace tile {
 
 struct BitTile {
     using cell_type = std::uint32_t;
@@ -19,14 +20,22 @@ struct BitTile {
     size_type zk;
 
     BitTile();
-    explicit BitTile(const Tile& tile);
+
+    explicit BitTile(const Tile &tile);
+
     void reverse();
+
     void rotate();
+
     void fill(int c);
+
     cell_type at(int x, int y) const;
+
     bool inBounds(int x, int y) const;
+
   private:
     void buildMask();
 };
 
+}
 }
