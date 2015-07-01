@@ -1,18 +1,17 @@
 cmake_minimum_required(VERSION 3.1)
 project(2015)
 
-set(CMAKE_CXX_COMPILER "/usr/local/opt/ccache/bin/ccache")
-set(CMAKE_CXX_COMPILER_ARG1 "g++-5")
-
+#set(CMAKE_CXX_COMPILER "/usr/local/opt/ccache/bin/ccache")
+#set(CMAKE_CXX_COMPILER_ARG1 "clang++")
+set(CMAKE_CXX_COMPILER g++-5)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY bin)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1y -Ofast -msse -Wall -ltcmalloc")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1y -O3 -msse -Wall -ltcmalloc")
 
 set(BOARD_TILE
     Board.cpp
     Board.hpp
     Tile.cpp
-    Tile.hpp
-    Square.hpp)
+    Tile.hpp)
 
 set(BIT_BOARD_TILE
     ${BOARD_TILE}
@@ -25,6 +24,7 @@ set(CORE_FILES
     Action.hpp
     Answer.cpp
     Answer.hpp
+    Home.cpp
     Home.hpp
     Takumi/Takumi.hpp
     Takumi/ZobristHash.hpp)
@@ -47,7 +47,7 @@ set(BIT_BEAM_SOURCE_FILES
     BitBeamMain.cpp)
 
 set(GET_ANS_SOURCE_FILES
-    ${CORE_TILES}
+    ${CORE_FILES}
     ${BOARD_TILE}
     CacheTile.hpp
     getAnswer.cpp)

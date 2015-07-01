@@ -7,16 +7,12 @@
 
 namespace procon26 {
 
-template<typename BoardType, typename TileType>
-struct HomeImpl {
-  BoardType board;
-  std::vector<TileType> tiles;
+struct Home {
+  board::Board board;
+  std::vector<tile::Tile> tiles;
   void load(const std::string& filepath);
-  TileType toTile(Action action) const;
+  tile::Tile toTile(Action action) const;
 };
-
-typedef HomeImpl<Board, Tile> Home;
 
 }
 
-#include "details/Home.cpp"

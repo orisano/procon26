@@ -19,6 +19,8 @@ const int ONE_STEP = 200;
 const int SIZE = 32;
 const int tri[] = {-1, -1, 3, 9, 27};
 
+using procon26::board::BitBoard;
+
 int dfs(int data[SIZE][SIZE], int x, int y)
 {
     if (0 > x || x >= SIZE || 0 > y || y >= SIZE) return 0;
@@ -32,7 +34,7 @@ int dfs(int data[SIZE][SIZE], int x, int y)
 }
 
 
-int evalBoard(const procon26::BitBoard &board) {
+int evalBoard(const BitBoard &board) {
     int vis[SIZE][SIZE] = {};
     int data[SIZE][SIZE];
     for (int y = 0; y < SIZE; y++) {
@@ -79,23 +81,23 @@ int evalBoard(const procon26::BitBoard &board) {
     return (board.blanks() + density) + 32 * N + MAX_V / MIN_V;
 }
 
-void dumpBoard(const procon26::BitBoard &board) {
-    puts("----------------");
+void dumpBoard(const BitBoard &board) {
+    std::puts("----------------");
     for (int i = 0; i < 32; i++) {
         auto init = board.initial[i];
         auto curr = board.data[i];
         for (int j = 0; j < 32; j++) {
-            printf("%4d", ((init >> j) & 1) * 2 | ((curr >> j) & 1));
+            std::printf("%4d", ((init >> j) & 1) * 2 | ((curr >> j) & 1));
         }
-        puts("");
+        std::puts("");
     }
-    printf("blanks: %d\n", board.blanks());
-    puts("----------------");
+    std::printf("blanks: %d\n", board.blanks());
+    std::puts("----------------");
 }
 }
 
-struct EBoard : public procon26::BitBoard {
-    typedef procon26::BitBoard Derived;
+struct EBoard : public BitBoard {
+    using Derived = BitBoard;
 
     EBoard() : Derived(), eval(0) {
         used_[0] = used_[1] = used_[2] = used_[3] = 0;
@@ -125,6 +127,7 @@ namespace procon26 {
 namespace takumi {
 
 Answer BitBeam::solve(const Home &home, int millisec) {
+    using tile::BitTile;
     BitBoard initial(home.board);
     std::vector<CacheTile<BitTile> > tiles;
     int id = 2;
@@ -158,10 +161,10 @@ Answer BitBeam::solve(const Home &home, int millisec) {
                 benchmark("beam") {
 #endif
                     auto tile = tiles[tile_id];
-                    for (int y = -7; y < 31; y++) {
-                        for (int x = -7; x < 31; x++) {
+                    for (int y = -7; y < 32; y++) {
+                        for (int x = -7; x < 32; x++) {
                             for (int r = 0; r < 4; r++, tile.rotate()) {
-                                if (!b.puttable(tile.value(), x, y)) continue;
+                                if (!b.canPut(tile.value(), x, y)) continue;
                                 EBoard nb = b;
                                 nb.put(tile.value(), x, y);
                                 nb.useTile(tile_id);
@@ -172,7 +175,7 @@ Answer BitBeam::solve(const Home &home, int millisec) {
                             }
                             tile.reverse();
                             for (int r = 0; r < 4; r++, tile.rotate()) {
-                                if (!b.puttable(tile.value(), x, y)) continue;
+                                if (!b.canPut(tile.value(), x, y)) continue;
                                 EBoard nb = b;
                                 nb.put(tile.value(), x, y);
                                 nb.useTile(tile_id);

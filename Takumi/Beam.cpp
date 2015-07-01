@@ -7,18 +7,20 @@
 #include "../CacheTile.hpp"
 #include "ZobristHash.hpp"
 #include "../../../orliv/benchmark.hpp"
+#include "../external/cmdline/cmdline.h"
 
-#define BEAM_BENCH
+// #define BEAM_BENCH
 
 namespace {
 const int dx[] = {0, 0, 1, -1};
 const int dy[] = {1, -1, 0, 0};
-const int BEAM_WIDTH = 20;
 const int ONE_STEP = 200;
 const int SIZE = 32;
-const int tri[] = {1, 3, 9, 27, 81};
+const int tri[] = {1, 3, 30, 50, 81};
 
-int evalBoard(const procon26::Board &board) {
+using procon26::board::Board;
+
+int evalBoard(const Board &board) {
     int maxi = 0;
     for (int y = 0; y < SIZE; y++) {
         for (int x = 0; x < SIZE; x++) {
@@ -27,8 +29,8 @@ int evalBoard(const procon26::Board &board) {
         }
     }
 
-    int puttable_count = 0;
     int vis[SIZE][SIZE] = {};
+    int mini_neighbor = 0;
     for (int y = 0; y < SIZE; y++) {
         for (int x = 0; x < SIZE; x++) {
             if (board.data[y][x] < 1) continue;
@@ -36,7 +38,8 @@ int evalBoard(const procon26::Board &board) {
                 int nx = x + dx[d], ny = y + dy[d];
                 if (!board.inBounds(nx, ny)) continue;
                 if (board.data[ny][nx] != 0) continue;
-                puttable_count += !vis[ny][nx]++;
+                vis[ny][nx]++;
+                mini_neighbor += board.data[y][x];
             }
         }
     }
@@ -46,24 +49,31 @@ int evalBoard(const procon26::Board &board) {
             density += tri[vis[y][x]];
         }
     }
-    return board.zk + density + maxi * 5;
+    return board.blanks() + density + maxi * 5 + mini_neighbor / 10;
 }
 
-void dumpBoard(const procon26::Board &board) {
+int getColor(int c){
+    if (c == 0) return 47;
+    if (c == 1) return 40;
+    return (c - 2) % 6 + 41;
+}
+
+void dumpBoard(const Board &board, bool number=false) {
     puts("----------------");
     for (int i = 0; i < 32; i++) {
         for (int j = 0; j < 32; j++) {
-            printf("%4d", board.data[i][j]);
+            if (number) printf("%4d", board.data[i][j]);
+            else printf("\x1b[%dm  \x1b[49m", getColor(board.data[i][j]));
         }
         puts("");
     }
-    printf("blanks: %d\n", board.zk);
+    printf("blanks: %d\n", board.blanks());
     puts("----------------");
 }
 }
 
-struct EBoard : public procon26::Board {
-    typedef procon26::Board Derived;
+struct EBoard : public Board {
+    using Derived = Board;
 
     EBoard() : Derived(), eval(0) {
         used_[0] = used_[1] = used_[2] = used_[3] = 0;
@@ -90,7 +100,12 @@ struct EBoard : public procon26::Board {
 namespace procon26 {
 namespace takumi {
 
-Answer Beam::solve(const Home &home, int millisec) {
+Answer Beam::solve(const Home &home, const int millisec, const cmdline::parser& parser) {
+    using tile::Tile;
+
+    const int BEAM_WIDTH = parser.get<int>("beam_width");
+    const bool VERBOSE = parser.exist("verbose");
+
     Board initial = home.board;
     std::vector<CacheTile<Tile>> tiles;
     int id = 2;
@@ -124,11 +139,11 @@ Answer Beam::solve(const Home &home, int millisec) {
                     for (int i = 0; i < TILE_SIZE; i++) {
                         if (b.isUsed(i)) continue;
                         auto tile = tiles[i];
-                        for (int y = -7; y < 31; y++) {
-                            for (int x = -7; x < 31; x++) {
+                        for (int y = -7; y < 32; y++) {
+                            for (int x = -7; x < 32; x++) {
                                 for (int r = 0; r < 4; r++, tile.rotate()) {
-                                    if (!b.puttable(tile.value(), x, y)) continue;
-                                    auto nb = b;
+                                    if (!b.canPut(tile.value(), x, y)) continue;
+                                    EBoard nb = b;
                                     nb.put(tile.value(), x, y);
                                     nb.useTile(i);
                                     auto hashv = zb.hash(nb);
@@ -138,8 +153,8 @@ Answer Beam::solve(const Home &home, int millisec) {
                                 }
                                 tile.reverse();
                                 for (int r = 0; r < 4; r++, tile.rotate()) {
-                                    if (!b.puttable(tile.value(), x, y)) continue;
-                                    auto nb = b;
+                                    if (!b.canPut(tile.value(), x, y)) continue;
+                                    EBoard nb = b;
                                     nb.put(tile.value(), x, y);
                                     nb.useTile(i);
                                     auto hashv = zb.hash(nb);
@@ -163,27 +178,28 @@ Answer Beam::solve(const Home &home, int millisec) {
                     if (b.blanks() < best.blanks()) best = b;
                 }
             }
-            benchmark("sort") {
-                std::partial_sort(begin(nxt), begin(nxt) + BEAM_WIDTH, end(nxt), [](const EBoard &a, const EBoard &b) {
-                    return a.eval < b.eval;
-                });
-            }
-            benchmark("erase") {
-                nxt.erase(begin(nxt) + BEAM_WIDTH, end(nxt));
-            }
+            std::partial_sort(begin(nxt), begin(nxt) + BEAM_WIDTH, end(nxt), [](const EBoard &a, const EBoard &b) {
+                return a.eval < b.eval;
+            });
+
+            nxt.erase(begin(nxt) + BEAM_WIDTH, end(nxt));
         }
         else {
             auto bbest = std::min_element(begin(nxt), end(nxt),
                                           [](const EBoard &a, const EBoard &b) { return a.blanks() < b.blanks(); });
             if (bbest != std::end(nxt) && bbest->blanks() < best.blanks()) best = *bbest;
         }
-        benchmark("swap") {
-            std::swap(beam, nxt);
-        }
+        std::swap(beam, nxt);
     }
-    dumpBoard(best);
+    dumpBoard(best, true);
     return Answer();
 }
 
+cmdline::parser Beam::getParser() {
+    cmdline::parser parser;
+    parser.add<int>("beam_width", 'b', "beam width", false, 20);
+    parser.add("verbose", 0, "show debug print");
+    return parser;
+}
 }
 }

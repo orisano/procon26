@@ -4,6 +4,7 @@
 
 using namespace std;
 using namespace procon26;
+using tile::Tile;
 
 inline bool inBounds(int x, int y){
   return 0 <= x && x < 32 && 0 <= y && y < 32;
