@@ -3,20 +3,21 @@
 #include <cstdio>
 #include <chrono>
 #include <set>
+#include <unordered_set>
 #include "../Tile.hpp"
 #include "../CacheTile.hpp"
 #include "ZobristHash.hpp"
 #include "../../../orliv/benchmark.hpp"
 #include "../external/cmdline/cmdline.h"
 
-// #define BEAM_BENCH
+#define BEAM_BENCH
 
 namespace {
 const int dx[] = {0, 0, 1, -1};
 const int dy[] = {1, -1, 0, 0};
 const int ONE_STEP = 200;
 const int SIZE = 32;
-const int tri[] = {1, 3, 30, 50, 81};
+const int tri[] = {0, 1, 4, 10, 12};
 
 using procon26::board::Board;
 
@@ -39,7 +40,7 @@ int evalBoard(const Board &board) {
                 if (!board.inBounds(nx, ny)) continue;
                 if (board.data[ny][nx] != 0) continue;
                 vis[ny][nx]++;
-                mini_neighbor += board.data[y][x];
+                // mini_neighbor += board.data[y][x];
             }
         }
     }
@@ -49,7 +50,7 @@ int evalBoard(const Board &board) {
             density += tri[vis[y][x]];
         }
     }
-    return board.blanks() + density + maxi * 5 + mini_neighbor / 10;
+    return board.blanks() + density + maxi;
 }
 
 int getColor(int c){
@@ -113,17 +114,14 @@ Answer Beam::solve(const Home &home, const int millisec, const cmdline::parser& 
 
     std::vector<EBoard> beam;
     beam.emplace_back(initial);
-    /*
-     * あとで重複削除入れる
-     * boardの状態と使ったピースのidでzobristhashで殴る
-     */
     orliv::ZobristHash<std::uint64_t, 32, 32, 2> zb;
 
     const auto TILE_SIZE = tiles.size();
     auto start = std::chrono::high_resolution_clock::now();
     std::vector<EBoard> nxt;
     nxt.reserve(700000);
-    std::set<std::uint64_t> vis;
+    std::unordered_set<std::uint64_t> vis;
+    vis.reserve(700000);
     auto best = initial;
     while (beam.size() || std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::high_resolution_clock::now() - start).count() + ONE_STEP < millisec) {
@@ -138,7 +136,7 @@ Answer Beam::solve(const Home &home, const int millisec, const cmdline::parser& 
 #endif
                     for (int i = 0; i < TILE_SIZE; i++) {
                         if (b.isUsed(i)) continue;
-                        auto tile = tiles[i];
+                        auto& tile = tiles[i];
                         for (int y = -7; y < 32; y++) {
                             for (int x = -7; x < 32; x++) {
                                 for (int r = 0; r < 4; r++, tile.rotate()) {
@@ -149,7 +147,7 @@ Answer Beam::solve(const Home &home, const int millisec, const cmdline::parser& 
                                     auto hashv = zb.hash(nb);
                                     if (vis.count(hashv)) continue;
                                     vis.insert(hashv);
-                                    nxt.push_back(nb);
+                                    nxt.emplace_back(nb);
                                 }
                                 tile.reverse();
                                 for (int r = 0; r < 4; r++, tile.rotate()) {
@@ -160,7 +158,7 @@ Answer Beam::solve(const Home &home, const int millisec, const cmdline::parser& 
                                     auto hashv = zb.hash(nb);
                                     if (vis.count(hashv)) continue;
                                     vis.insert(hashv);
-                                    nxt.push_back(nb);
+                                    nxt.emplace_back(nb);
                                 }
                             }
                         }
