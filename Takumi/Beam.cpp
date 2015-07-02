@@ -17,7 +17,8 @@ const int dx[] = {0, 0, 1, -1};
 const int dy[] = {1, -1, 0, 0};
 const int ONE_STEP = 200;
 const int SIZE = 32;
-const int tri[] = {0, 1, 4, 10, 12};
+// const int tri[] = {0, 1, 4, 10, 12};
+const int tri[] = {0, 1, 3, 7, 10};
 
 using procon26::board::Board;
 
@@ -30,24 +31,22 @@ int evalBoard(const Board &board) {
         }
     }
 
-    int vis[SIZE][SIZE] = {};
-    int mini_neighbor = 0;
-    for (int y = 0; y < SIZE; y++) {
-        for (int x = 0; x < SIZE; x++) {
-            if (board.data[y][x] < 1) continue;
-            for (int d = 0; d < 4; d++) {
-                int nx = x + dx[d], ny = y + dy[d];
-                if (!board.inBounds(nx, ny)) continue;
-                if (board.data[ny][nx] != 0) continue;
-                vis[ny][nx]++;
-                // mini_neighbor += board.data[y][x];
-            }
-        }
-    }
     int density = 0;
     for (int y = 0; y < SIZE; y++) {
         for (int x = 0; x < SIZE; x++) {
-            density += tri[vis[y][x]];
+            if (board.data[y][x] != 0) continue;
+            int pn = 0;
+            for (int d = 0; d < 4; d++) {
+                int nx = x + dx[d], ny = y + dy[d];
+                if (!board.inBounds(nx, ny)){
+                    pn++;
+                }
+                else if (board.data[ny][nx] != 0) {
+                    pn++;
+                }
+            }
+            density += tri[pn];
+            
         }
     }
     return board.blanks() + density + maxi;
@@ -71,6 +70,52 @@ void dumpBoard(const Board &board, bool number=false) {
     printf("blanks: %d\n", board.blanks());
     puts("----------------");
 }
+
+bool calcCenterOfGravity(const Board& board, int& gx, int& gy){
+
+    int min_x = Board::SIZE + 1, min_y = Board::SIZE + 1;
+    int max_x = -1, max_y = -1;
+    int sum_x = 0, sum_y = 0;
+    int filled = 0;
+
+    for (int y = 0; y < Board::SIZE; y++){
+        for (int x = 0; x < Board::SIZE; x++){
+            auto c = board.at(x, y);
+            if (c == 1) continue;
+            min_x = std::min(min_x, x);
+            max_x = std::max(max_x, x);
+            min_y = std::min(min_y, y);
+            max_y = std::max(max_y, y);
+            if (c == 0) continue;
+            filled++;
+            sum_x += x;
+            sum_y += y;
+        }
+    }
+    if (!filled) {
+        gx = 0;
+        gy = 0;
+        return false;
+    }
+
+    sum_x /= filled;
+    sum_y /= filled;
+
+    const int rx = max_x - min_x;
+    const int ry = max_y - min_y;
+    const int tx = rx / 3 + 1;
+    const int ty = ry / 3 + 1;
+
+    gx = (sum_x - min_x) / tx;
+    gy = (sum_y - min_y) / ty;
+#if 0
+    printf("g: %d %d\n", sum_x, sum_y);
+    printf("x: %d %d\n", max_x, max_y);
+    printf("m: %d %d\n", min_y, min_y);
+#endif
+    return true;
+}
+
 }
 
 struct EBoard : public Board {
@@ -112,82 +157,111 @@ Answer Beam::solve(const Home &home, const int millisec, const cmdline::parser& 
     int id = 2;
     for (auto &tile : home.tiles) tiles.emplace_back(tile), tiles.back().fill(id++);
 
-    std::vector<EBoard> beam;
-    beam.emplace_back(initial);
+    std::vector<EBoard> beam[3][3];
+    beam[0][0].emplace_back(initial);
     orliv::ZobristHash<std::uint64_t, 32, 32, 2> zb;
 
     const auto TILE_SIZE = tiles.size();
     auto start = std::chrono::high_resolution_clock::now();
-    std::vector<EBoard> nxt;
-    nxt.reserve(700000);
+    std::vector<EBoard> nxt[3][3];
+    for (int i = 0; i < 3; i++) for (int j = 0; j < 3; j++) nxt[i][j].reserve(100000);
     std::unordered_set<std::uint64_t> vis;
     vis.reserve(700000);
     auto best = initial;
-    while (beam.size() || std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::high_resolution_clock::now() - start).count() + ONE_STEP < millisec) {
-        dumpBoard(beam[0]);
-        dumpBoard(best);
-        nxt.clear();
-        vis.clear();
-        benchmark("next beam generate") {
-            for (const auto &b : beam) {
+
+    while (1) {
+        for (int yi = 0; yi < 3; yi++){
+            for (int xi = 0; xi < 3; xi++){
+                //dumpBoard(beam[0]);
+                //dumpBoard(best);
+                vis.clear();
+                benchmark("next beam generate") {
+                    for (const auto &b : beam[yi][xi]) {
 #ifdef BEAM_BENCH
-                benchmark("beam") {
+                        benchmark("beam") {
 #endif
-                    for (int i = 0; i < TILE_SIZE; i++) {
-                        if (b.isUsed(i)) continue;
-                        auto& tile = tiles[i];
-                        for (int y = -7; y < 32; y++) {
-                            for (int x = -7; x < 32; x++) {
-                                for (int r = 0; r < 4; r++, tile.rotate()) {
-                                    if (!b.canPut(tile.value(), x, y)) continue;
-                                    EBoard nb = b;
-                                    nb.put(tile.value(), x, y);
-                                    nb.useTile(i);
-                                    auto hashv = zb.hash(nb);
-                                    if (vis.count(hashv)) continue;
-                                    vis.insert(hashv);
-                                    nxt.emplace_back(nb);
-                                }
-                                tile.reverse();
-                                for (int r = 0; r < 4; r++, tile.rotate()) {
-                                    if (!b.canPut(tile.value(), x, y)) continue;
-                                    EBoard nb = b;
-                                    nb.put(tile.value(), x, y);
-                                    nb.useTile(i);
-                                    auto hashv = zb.hash(nb);
-                                    if (vis.count(hashv)) continue;
-                                    vis.insert(hashv);
-                                    nxt.emplace_back(nb);
+                            for (int i = 0; i < TILE_SIZE; i++) {
+                                if (b.isUsed(i)) continue;
+                                auto& tile = tiles[i];
+                                for (int y = -7; y < 32; y++) {
+                                    for (int x = -7; x < 32; x++) {
+                                        for (int r = 0; r < 4; r++, tile.rotate()) {
+                                            if (!b.canPut(tile.value(), x, y)) continue;
+                                            EBoard nb = b;
+                                            nb.put(tile.value(), x, y);
+                                            nb.useTile(i);
+#if 1
+                                            auto hashv = zb.hash(nb);
+                                            if (vis.count(hashv)) continue;
+                                            vis.insert(hashv);
+#endif
+                                            int gx, gy;
+                                            calcCenterOfGravity(nb, gx, gy);
+                                            nxt[gy][gx].emplace_back(nb);
+                                        }
+                                        tile.reverse();
+                                        for (int r = 0; r < 4; r++, tile.rotate()) {
+                                            if (!b.canPut(tile.value(), x, y)) continue;
+                                            EBoard nb = b;
+                                            nb.put(tile.value(), x, y);
+                                            nb.useTile(i);
+#if 1
+                                            auto hashv = zb.hash(nb);
+                                            if (vis.count(hashv)) continue;
+                                            vis.insert(hashv);
+#endif
+                                            int gx, gy;
+                                            calcCenterOfGravity(nb, gx, gy);
+                                            nxt[gy][gx].emplace_back(nb);
+                                        }
+                                    }
                                 }
                             }
+#ifdef BEAM_BENCH
+                        }
+#endif
+                    }
+                }
+            }
+        }
+        for (int yi = 0; yi < 3; yi++) {
+            for (int xi = 0; xi < 3; xi++) {
+                if (nxt[yi][xi].size() > BEAM_WIDTH) {
+                    benchmark("eval") {
+                        for (auto &b : nxt[yi][xi]) {
+                            b.eval = evalBoard(b);
+                            if (b.blanks() < best.blanks()) best = b;
                         }
                     }
-#ifdef BEAM_BENCH
-                }
-#endif
-            }
-        }
-        printf("nxt size: %lu\n", nxt.size());
-        if (nxt.size() > BEAM_WIDTH) {
-            benchmark("eval") {
-                for (auto &b : nxt) {
-                    b.eval = evalBoard(b);
-                    if (b.blanks() < best.blanks()) best = b;
-                }
-            }
-            std::partial_sort(begin(nxt), begin(nxt) + BEAM_WIDTH, end(nxt), [](const EBoard &a, const EBoard &b) {
-                return a.eval < b.eval;
-            });
+                    std::partial_sort(begin(nxt[yi][xi]), begin(nxt[yi][xi]) + BEAM_WIDTH, end(nxt[yi][xi]),
+                                      [](const EBoard &a, const EBoard &b) {
+                                          return a.eval < b.eval;
+                                      });
 
-            nxt.erase(begin(nxt) + BEAM_WIDTH, end(nxt));
+                    nxt[yi][xi].erase(begin(nxt[yi][xi]) + BEAM_WIDTH, end(nxt[yi][xi]));
+                }
+                else {
+                    auto bbest = std::min_element(begin(nxt[yi][xi]), end(nxt[yi][xi]),
+                                                  [](const EBoard &a, const EBoard &b) {
+                                                      return a.blanks() < b.blanks();
+                                                  });
+                    if (bbest != std::end(nxt[yi][xi]) && bbest->blanks() < best.blanks()) best = *bbest;
+                }
+            }
         }
-        else {
-            auto bbest = std::min_element(begin(nxt), end(nxt),
-                                          [](const EBoard &a, const EBoard &b) { return a.blanks() < b.blanks(); });
-            if (bbest != std::end(nxt) && bbest->blanks() < best.blanks()) best = *bbest;
-        }
+
         std::swap(beam, nxt);
+        size_t ss = 0;
+        for (int i = 0; i < 3; i++){
+            for (int j = 0; j < 3; j++){
+                ss += beam[i][j].size();
+                printf("%lu ", beam[i][j].size());
+                nxt[i][j].clear();
+            }
+            puts("");
+        }
+        dumpBoard(best);
+        if (!ss) break;
     }
     dumpBoard(best, true);
     return Answer();
