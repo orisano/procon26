@@ -22,6 +22,8 @@ inline bool ok(int b[32][32], Tile& tile, int x, int y){
   return true;
 }
 
+#define endl "\r\n"
+
 int main(int argc, const char** argv)
 {
   string filepath;
