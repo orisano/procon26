@@ -12,12 +12,14 @@ namespace board {
 struct BitBoard {
     using cell_type = std::uint32_t;
     using size_type = std::uint16_t;
+    using state_type = std::uint8_t;
     static const size_type SIZE = 32;
 
     static cell_type initial[SIZE];
     static size_type initial_zk;
 
     cell_type data[SIZE];
+    state_type state[SIZE][SIZE];
     size_type zk;
 
     BitBoard();

@@ -16,6 +16,7 @@ BitBoard::BitBoard() {
     std::memset(initial, 0, sizeof(initial));
     initial_zk = 0;
     std::memset(data, 0, sizeof(data));
+    std::memset(state, 0, sizeof(state));
     zk = 0;
 }
 
@@ -23,6 +24,7 @@ BitBoard::BitBoard(const Board &board) {
     std::memset(initial, 0, sizeof(initial));
     initial_zk = 0;
     std::memset(data, 0, sizeof(data));
+    std::memset(state, 0, sizeof(state));
     zk = 0;
 
     const cell_type ONE = 1;
@@ -42,7 +44,9 @@ bool BitBoard::inBounds(int x, int y) const {
 
 BitBoard::cell_type BitBoard::at(int x, int y) const {
     assert(inBounds(x, y));
-    return (data[y] >> x) & 1;
+    if ((initial[y] >> x) & 1) return cell_type(1);
+    if ((data[y] >> x) & 1) return static_cast<cell_type>(state[y][x]) + 2;
+    return 0;
 }
 
 bool BitBoard::canPut(const BitTile &tile, int x, int y) const {
@@ -79,7 +83,13 @@ bool BitBoard::canPut(const BitTile &tile, int x, int y) const {
 void BitBoard::put(const BitTile &tile, int x, int y) {
     assert(canPut(tile, x, y));
     for (int i = std::max<int>(y, 0), size = std::min<int>(y + BitTile::SIZE, SIZE); i < size; i++) {
-        data[i] |= (static_cast<BitTile::mask_type>(tile.data[i - y]) << (10 + x)) >> 10;
+        data[i] |= (static_cast<BitTile::mask_type>(tile.data[i - y]) << (BIT_MARGIN + x)) >> BIT_MARGIN;
+    }
+    for (int i = 0; i < 8; i++){
+      for (int j = 0; j < 8; j++){
+        if (!tile.at(j, i)) continue;
+        state[y + i][x + j] = tile.cell_value;
+      }
     }
     zk += tile.zk;
 }

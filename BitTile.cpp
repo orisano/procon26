@@ -66,7 +66,7 @@ BitTile::cell_type BitTile::at(int x, int y) const {
 }
 
 void BitTile::fill(int c) {
-
+  cell_value = c;
 }
 
 }

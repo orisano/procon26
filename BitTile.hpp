@@ -17,6 +17,7 @@ struct BitTile {
 
     cell_type data[SIZE];
     mask_type mask[MASK_SIZE];
+    std::uint16_t cell_value;
     size_type zk;
 
     BitTile();
