@@ -18,11 +18,11 @@ const int dy[] = {1, -1, 0, 0};
 // const int BEAM_WIDTH = 3000;
 const int ONE_STEP = 200;
 const int SIZE = 32;
-const int pn[] = {0, 1, 3, 7, 13};
+const int pn[] = {0, 1, 3, 7, 7};
 
 using procon26::board::BitBoard;
 
-int dfs(int data[SIZE][SIZE], int x, int y) {
+inline int dfs(int data[SIZE][SIZE], int x, int y) {
     if (0 > x || x >= SIZE || 0 > y || y >= SIZE) return 0;
     if (data[y][x] == 1) return 0;
     data[y][x] = 1;
@@ -33,55 +33,37 @@ int dfs(int data[SIZE][SIZE], int x, int y) {
     return sum;
 }
 
+const int PENALTY_CLUSTER_SIZE = 5;
 
 int evalBoard(const BitBoard &board) {
-    int vis[SIZE][SIZE] = {};
+    int data[SIZE][SIZE] = {};
+    for (int i = 0; i < SIZE; i++){
+      for (int j = 0; j < SIZE; j++){
+        data[i][j] = board.at(j, i) != 0;
+      }
+    }
+    int density = 0;
+    int cluster = 0;
     for (int y = 0; y < SIZE; y++) {
         for (int x = 0; x < SIZE; x++) {
             if (board.at(x, y)) continue;
+            int cs = dfs(data, x, y);
+            if (1 <= cs && cs <= PENALTY_CLUSTER_SIZE) cluster++;
+            int cnt = 0;
             for (int d = 0; d < 4; d++) {
                 int nx = x + dx[d], ny = y + dy[d];
                 if (!board.inBounds(nx, ny)) {
-                    vis[ny][nx]++;
+                    cnt++;
                     continue;
                 }
                 if (board.at(nx, ny) == 0) continue;
-                vis[ny][nx]++;
+                cnt++;
             }
+            density += pn[cnt];
         }
     }
-    /*
-    std::vector<int> vs;
-    double avg = 0;
-    for (int y = 0; y < SIZE; y++){
-        for (int x = 0; x < SIZE; x++){
-            if (data[y][x]) continue;
-            auto rv = dfs(data, x, y);
-            avg += rv;
-            vs.push_back(rv);
-        }
-    }
-    */
-    /*
-    const int N = vs.size();
-    const int MIN_V = *std::min_element(vs.begin(), vs.end());
-    const int MAX_V = *std::max_element(vs.begin(), vs.end());
-    */
-    /*
-    avg /= N;
-    double variance = 0;
-    for (const int v : vs){
-        variance += (v - avg);
-    }
-    variance /= N - 1;
-    */
-    int density = 0;
-    for (int y = 0; y < SIZE; y++) {
-        for (int x = 0; x < SIZE; x++) {
-            density += pn[vis[y][x]];
-        }
-    }
-    return board.blanks() + density;
+
+    return board.blanks() + density + 10 * cluster;
 }
 
 int getColor(int c) {
@@ -147,10 +129,6 @@ Answer BitBeam::solve(const Home &home, int millisec, cmdline::parser& parser) {
 
     std::vector <EBoard> beam;
     beam.emplace_back(initial);
-    /*
-     * あとで重複削除入れる
-     * boardの状態と使ったピースのidでzobristhashで殴る
-     */
     orliv::ZobristHash<std::uint64_t, 32, 32, 2> zb;
 
     auto start = std::chrono::high_resolution_clock::now();
