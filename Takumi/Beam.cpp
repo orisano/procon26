@@ -19,8 +19,8 @@ const int ONE_STEP = 200;
 const int SIZE = 32;
 const int MAX_DIV = 4;
 // const int tri[] = {0, 1, 4, 10, 12};
-const int pn[] = {0, 1, 3, 7, 10, 14, 18, 22, 26};
-
+// const int pn[] = {0, 1, 3, 7, 10, 14, 18, 22, 26};
+const int pn[] = {0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 using procon26::board::Board;
 
 int evalBoard(const Board &board) {
@@ -162,7 +162,7 @@ Answer Beam::solve(const Home &home, const int millisec, const cmdline::parser& 
     const auto TILE_SIZE = tiles.size();
     auto start = std::chrono::high_resolution_clock::now();
     std::vector<EBoard> nxt[MAX_DIV][MAX_DIV];
-    for (int i = 0; i < DIV; i++) for (int j = 0; j < DIV; j++) nxt[i][j].reserve(100000);
+    for (int i = 0; i < DIV; i++) for (int j = 0; j < DIV; j++) nxt[i][j].reserve(1200000 / (DIV * DIV));
     std::unordered_set<std::uint64_t> vis;
     vis.reserve(700000);
     auto best = initial;
