@@ -13,12 +13,13 @@
 #define BEAM_BENCH
 
 namespace {
-const int dx[] = {0, 0, 1, -1};
-const int dy[] = {1, -1, 0, 0};
+const int dx[] = {0, 0, 1, -1, 1, 1, -1, -1};
+const int dy[] = {1, -1, 0, 0, 1, -1, 1, -1};
 const int ONE_STEP = 200;
 const int SIZE = 32;
+const int MAX_DIV = 4;
 // const int tri[] = {0, 1, 4, 10, 12};
-const int tri[] = {0, 1, 3, 7, 10};
+const int pn[] = {0, 1, 3, 7, 10, 14, 18, 22, 26};
 
 using procon26::board::Board;
 
@@ -35,18 +36,18 @@ int evalBoard(const Board &board) {
     for (int y = 0; y < SIZE; y++) {
         for (int x = 0; x < SIZE; x++) {
             if (board.data[y][x] != 0) continue;
-            int pn = 0;
-            for (int d = 0; d < 4; d++) {
+            int cnt = 0;
+            for (int d = 0; d < 8; d++) {
                 int nx = x + dx[d], ny = y + dy[d];
                 if (!board.inBounds(nx, ny)){
-                    pn++;
+                    cnt++;
                 }
                 else if (board.data[ny][nx] != 0) {
-                    pn++;
+                    cnt++;
                 }
             }
-            density += tri[pn];
-            
+            density += pn[cnt];
+
         }
     }
     return board.blanks() + density + maxi;
@@ -71,7 +72,7 @@ void dumpBoard(const Board &board, bool number=false) {
     puts("----------------");
 }
 
-bool calcCenterOfGravity(const Board& board, int& gx, int& gy){
+bool calcCenterOfGravity(const Board& board, int div, int& gx, int& gy){
 
     int min_x = Board::SIZE + 1, min_y = Board::SIZE + 1;
     int max_x = -1, max_y = -1;
@@ -103,16 +104,12 @@ bool calcCenterOfGravity(const Board& board, int& gx, int& gy){
 
     const int rx = max_x - min_x;
     const int ry = max_y - min_y;
-    const int tx = rx / 3 + 1;
-    const int ty = ry / 3 + 1;
+    const int tx = rx / div + 1;
+    const int ty = ry / div + 1;
 
     gx = (sum_x - min_x) / tx;
     gy = (sum_y - min_y) / ty;
-#if 0
-    printf("g: %d %d\n", sum_x, sum_y);
-    printf("x: %d %d\n", max_x, max_y);
-    printf("m: %d %d\n", min_y, min_y);
-#endif
+
     return true;
 }
 
@@ -150,6 +147,7 @@ Answer Beam::solve(const Home &home, const int millisec, const cmdline::parser& 
     using tile::Tile;
 
     const int BEAM_WIDTH = parser.get<int>("beam_width");
+    const int DIV = parser.get<int>("divide");
     const bool VERBOSE = parser.exist("verbose");
 
     Board initial = home.board;
@@ -157,21 +155,21 @@ Answer Beam::solve(const Home &home, const int millisec, const cmdline::parser& 
     int id = 2;
     for (auto &tile : home.tiles) tiles.emplace_back(tile), tiles.back().fill(id++);
 
-    std::vector<EBoard> beam[3][3];
+    std::vector<EBoard> beam[MAX_DIV][MAX_DIV];
     beam[0][0].emplace_back(initial);
     orliv::ZobristHash<std::uint64_t, 32, 32, 2> zb;
 
     const auto TILE_SIZE = tiles.size();
     auto start = std::chrono::high_resolution_clock::now();
-    std::vector<EBoard> nxt[3][3];
-    for (int i = 0; i < 3; i++) for (int j = 0; j < 3; j++) nxt[i][j].reserve(100000);
+    std::vector<EBoard> nxt[MAX_DIV][MAX_DIV];
+    for (int i = 0; i < DIV; i++) for (int j = 0; j < DIV; j++) nxt[i][j].reserve(100000);
     std::unordered_set<std::uint64_t> vis;
     vis.reserve(700000);
     auto best = initial;
 
     while (1) {
-        for (int yi = 0; yi < 3; yi++){
-            for (int xi = 0; xi < 3; xi++){
+        for (int yi = 0; yi < DIV; yi++){
+            for (int xi = 0; xi < DIV; xi++){
                 //dumpBoard(beam[0]);
                 //dumpBoard(best);
                 vis.clear();
@@ -196,7 +194,7 @@ Answer Beam::solve(const Home &home, const int millisec, const cmdline::parser& 
                                             vis.insert(hashv);
 #endif
                                             int gx, gy;
-                                            calcCenterOfGravity(nb, gx, gy);
+                                            calcCenterOfGravity(nb, DIV, gx, gy);
                                             nxt[gy][gx].emplace_back(nb);
                                         }
                                         tile.reverse();
@@ -211,7 +209,7 @@ Answer Beam::solve(const Home &home, const int millisec, const cmdline::parser& 
                                             vis.insert(hashv);
 #endif
                                             int gx, gy;
-                                            calcCenterOfGravity(nb, gx, gy);
+                                            calcCenterOfGravity(nb, DIV, gx, gy);
                                             nxt[gy][gx].emplace_back(nb);
                                         }
                                     }
@@ -224,8 +222,8 @@ Answer Beam::solve(const Home &home, const int millisec, const cmdline::parser& 
                 }
             }
         }
-        for (int yi = 0; yi < 3; yi++) {
-            for (int xi = 0; xi < 3; xi++) {
+        for (int yi = 0; yi < DIV; yi++) {
+            for (int xi = 0; xi < DIV; xi++) {
                 if (nxt[yi][xi].size() > BEAM_WIDTH) {
                     benchmark("eval") {
                         for (auto &b : nxt[yi][xi]) {
@@ -252,8 +250,8 @@ Answer Beam::solve(const Home &home, const int millisec, const cmdline::parser& 
 
         std::swap(beam, nxt);
         size_t ss = 0;
-        for (int i = 0; i < 3; i++){
-            for (int j = 0; j < 3; j++){
+        for (int i = 0; i < DIV; i++){
+            for (int j = 0; j < DIV; j++){
                 ss += beam[i][j].size();
                 printf("%lu ", beam[i][j].size());
                 nxt[i][j].clear();
@@ -269,7 +267,8 @@ Answer Beam::solve(const Home &home, const int millisec, const cmdline::parser& 
 
 cmdline::parser Beam::getParser() {
     cmdline::parser parser;
-    parser.add<int>("beam_width", 'b', "beam width", false, 20);
+    parser.add<int>("beam_width", 'b', "beam width", false, 5);
+    parser.add<int>("divide", 'd', "divide", false, 1, cmdline::range(1, MAX_DIV));
     parser.add("verbose", 0, "show debug print");
     return parser;
 }
