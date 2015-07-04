@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <chrono>
 #include <set>
+#include <unordered_set>
 #include "../BitBoard.hpp"
 #include "../BitTile.hpp"
 #include "../CacheTile.hpp"
@@ -15,10 +16,8 @@
 namespace {
 const int dx[] = {0, 0, 1, -1};
 const int dy[] = {1, -1, 0, 0};
-// const int BEAM_WIDTH = 3000;
-const int ONE_STEP = 200;
 const int SIZE = 32;
-const int pn[] = {0, 1, 3, 7, 7};
+const int pn[] = {0, 1, 3, 7, 12};
 
 using procon26::board::BitBoard;
 
@@ -35,7 +34,7 @@ inline int dfs(int data[SIZE][SIZE], int x, int y) {
 
 const int PENALTY_CLUSTER_SIZE = 5;
 
-int evalBoard(const BitBoard &board) {
+inline int evalBoard(const BitBoard &board) {
     int data[SIZE][SIZE] = {};
     for (int i = 0; i < SIZE; i++){
       for (int j = 0; j < SIZE; j++){
@@ -47,8 +46,8 @@ int evalBoard(const BitBoard &board) {
     for (int y = 0; y < SIZE; y++) {
         for (int x = 0; x < SIZE; x++) {
             if (board.at(x, y)) continue;
-            int cs = dfs(data, x, y);
-            if (1 <= cs && cs <= PENALTY_CLUSTER_SIZE) cluster++;
+//            int cs = dfs(data, x, y);
+//            if (1 <= cs && cs <= PENALTY_CLUSTER_SIZE) cluster++;
             int cnt = 0;
             for (int d = 0; d < 4; d++) {
                 int nx = x + dx[d], ny = y + dy[d];
@@ -90,7 +89,7 @@ void dumpBoard(const BitBoard &board, bool number = false) {
 struct EBoard : public BitBoard {
     using Derived = BitBoard;
 
-    EBoard() : Derived(), eval(0) {
+    EBoard() : Derived(), eval(-1) {
         used_[0] = used_[1] = used_[2] = used_[3] = 0;
     }
 
@@ -131,23 +130,24 @@ Answer BitBeam::solve(const Home &home, int millisec, cmdline::parser& parser) {
     beam.emplace_back(initial);
     orliv::ZobristHash<std::uint64_t, 32, 32, 2> zb;
 
-    auto start = std::chrono::high_resolution_clock::now();
+    // auto start = std::chrono::high_resolution_clock::now();
     std::vector <EBoard> nxt;
-    nxt.reserve(700000);
-    std::set <std::uint64_t> vis;
+    nxt.reserve(1200000);
+    std::unordered_set <std::uint64_t> vis;
+    vis.reserve(1200000);
+
     auto best = initial;
     int tile_id = 0;
-    while ((tile_id < tiles.size() &&
+    while ((tile_id < (int)tiles.size() &&
             beam.size())) { // std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start).count() + ONE_STEP < millisec) {
-        printf("::tile_id: %d / %lu\n", tile_id, tiles.size());
-        dumpBoard(beam[0]);
-        //dumpBoard(best);
+        printf("tile_id: %d / %lu\n", tile_id, tiles.size());
+        //dumpBoard(beam[0]);
+        dumpBoard(best);
         nxt.clear();
         vis.clear();
-        int beam_count = 0;
         benchmark("next beam generate") {
             for (const auto &b : beam) {
-                if (beam_count++ < BEAM_WIDTH) nxt.push_back(b);
+                nxt.emplace_back(b);
 #ifdef BEAM_BENCH
                 benchmark("beam") {
 #endif
@@ -183,7 +183,7 @@ Answer BitBeam::solve(const Home &home, int millisec, cmdline::parser& parser) {
             }
         }
         printf("nxt size: %lu\n", nxt.size());
-        if (nxt.size() > BEAM_WIDTH) {
+        if ((int)nxt.size() > BEAM_WIDTH) {
             benchmark("eval") {
                 for (auto &b : nxt) {
                     b.eval = evalBoard(b);
@@ -197,11 +197,9 @@ Answer BitBeam::solve(const Home &home, int millisec, cmdline::parser& parser) {
             }
             nxt.erase(begin(nxt) + BEAM_WIDTH, end(nxt));
         }
-        else {
-            auto bbest = std::min_element(begin(nxt), end(nxt),
-                                          [](const EBoard &a, const EBoard &b) { return a.zk < b.zk; });
-            if (bbest != std::end(nxt) && bbest->blanks() < best.blanks()) best = *bbest;
-        }
+        auto bbest = std::min_element(begin(nxt), end(nxt),
+                                          [](const EBoard &a, const EBoard &b) { return a.blanks() < b.blanks(); });
+        if (bbest != std::end(nxt) && bbest->blanks() < best.blanks()) best = *bbest;
         std::swap(beam, nxt);
         tile_id++;
     }
