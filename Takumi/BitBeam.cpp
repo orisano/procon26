@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <chrono>
 #include <set>
+#include <unordered_set>
 #include "../BitBoard.hpp"
 #include "../BitTile.hpp"
 #include "../CacheTile.hpp"
@@ -15,8 +16,6 @@
 namespace {
 const int dx[] = {0, 0, 1, -1};
 const int dy[] = {1, -1, 0, 0};
-// const int BEAM_WIDTH = 3000;
-const int ONE_STEP = 200;
 const int SIZE = 32;
 const int pn[] = {0, 1, 3, 7, 7};
 
@@ -114,6 +113,8 @@ struct EBoard : public BitBoard {
 };
 }
 
+using namespace std;
+
 namespace procon26 {
 namespace takumi {
 
@@ -123,35 +124,35 @@ Answer BitBeam::solve(const Home &home, int millisec, cmdline::parser& parser) {
     const int BEAM_WIDTH = parser.get<int>("beam_width");
 
     BitBoard initial(home.board);
-    std::vector <CacheTile<BitTile>> tiles;
+    vector<CacheTile<BitTile>> tiles;
     int id = 0;
     for (auto &tile : home.tiles) tiles.emplace_back(BitTile(tile)), tiles.back().fill(id++);
 
-    std::vector <EBoard> beam;
+    vector<EBoard> beam;
+    beam.reserve(1200000);
     beam.emplace_back(initial);
-    orliv::ZobristHash<std::uint64_t, 32, 32, 2> zb;
 
-    auto start = std::chrono::high_resolution_clock::now();
-    std::vector <EBoard> nxt;
-    nxt.reserve(700000);
-    std::set <std::uint64_t> vis;
+    unordered_set<uint64_t> vis;
+    vis.reserve(1200000);
+
+    orliv::ZobristHash<uint64_t, 32, 32, 2> zb;
+
     auto best = initial;
     int tile_id = 0;
-    while ((tile_id < tiles.size() &&
-            beam.size())) { // std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start).count() + ONE_STEP < millisec) {
-        printf("::tile_id: %d / %lu\n", tile_id, tiles.size());
-        dumpBoard(beam[0]);
-        //dumpBoard(best);
-        nxt.clear();
+    while ((tile_id < (int)tiles.size() && beam.size())) {
+        printf("tile_id: %d / %lu\n", tile_id, tiles.size());
+        dumpBoard(best);
         vis.clear();
-        int beam_count = 0;
+
+        const int beam_len = beam.size();
+
         benchmark("next beam generate") {
-            for (const auto &b : beam) {
-                if (beam_count++ < BEAM_WIDTH) nxt.push_back(b);
+            for (int bi = 0; bi < beam_len; bi++) {
+                const auto &b = beam[bi];
 #ifdef BEAM_BENCH
                 benchmark("beam") {
 #endif
-                auto& tile = tiles[tile_id];
+                auto &tile = tiles[tile_id];
                 for (int y = -7; y < 32; y++) {
                     for (int x = -7; x < 32; x++) {
                         for (int r = 0; r < 4; r++, tile.rotate()) {
@@ -162,7 +163,7 @@ Answer BitBeam::solve(const Home &home, int millisec, cmdline::parser& parser) {
                             auto hashv = zb.hash(nb);
                             if (vis.count(hashv)) continue;
                             vis.insert(hashv);
-                            nxt.emplace_back(nb);
+                            beam.emplace_back(nb);
                         }
                         tile.reverse();
                         for (int r = 0; r < 4; r++, tile.rotate()) {
@@ -173,7 +174,7 @@ Answer BitBeam::solve(const Home &home, int millisec, cmdline::parser& parser) {
                             auto hashv = zb.hash(nb);
                             if (vis.count(hashv)) continue;
                             vis.insert(hashv);
-                            nxt.emplace_back(nb);
+                            beam.emplace_back(nb);
                         }
                     }
                 }
@@ -182,27 +183,26 @@ Answer BitBeam::solve(const Home &home, int millisec, cmdline::parser& parser) {
 #endif
             }
         }
-        printf("nxt size: %lu\n", nxt.size());
-        if (nxt.size() > BEAM_WIDTH) {
+        printf("nxt size: %lu\n", beam.size());
+        if ((int) beam.size() > BEAM_WIDTH) {
             benchmark("eval") {
-                for (auto &b : nxt) {
+                for (int bi = beam_len; bi < (int) beam.size(); bi++) {
+                    auto &b = beam[bi];
                     b.eval = evalBoard(b);
                     if (b.blanks() < best.blanks()) best = b;
                 }
             }
             benchmark("sort") {
-                std::partial_sort(begin(nxt), begin(nxt) + BEAM_WIDTH, end(nxt), [](const EBoard &a, const EBoard &b) {
-                    return a.eval < b.eval;
-                });
+                partial_sort(begin(beam), begin(beam) + BEAM_WIDTH, end(beam),
+                                  [](const EBoard &a, const EBoard &b) {
+                                      return a.eval < b.eval;
+                                  });
             }
-            nxt.erase(begin(nxt) + BEAM_WIDTH, end(nxt));
+            beam.erase(begin(beam) + BEAM_WIDTH, end(beam));
         }
-        else {
-            auto bbest = std::min_element(begin(nxt), end(nxt),
-                                          [](const EBoard &a, const EBoard &b) { return a.zk < b.zk; });
-            if (bbest != std::end(nxt) && bbest->blanks() < best.blanks()) best = *bbest;
-        }
-        std::swap(beam, nxt);
+        auto bbest = min_element(begin(beam), end(beam),
+                                      [](const EBoard &a, const EBoard &b) { return a.blanks() < b.blanks(); });
+        if (bbest != end(beam) && bbest->blanks() < best.blanks()) best = *bbest;
         tile_id++;
     }
     dumpBoard(best, true);
