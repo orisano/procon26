@@ -36,14 +36,16 @@ struct ZobristHash {
   void output(OS& st){
     st << "#ifndef INCLUDE_HASH_VALUE\n";
     st << "#define INCLUDE_HASH_VALUE\n";
+    st << "#include <cstdint>\n";
     st << "namespace orliv {\n";
-    st << typeid(T).name() << " hash_v[" << H << "][" << W << "][" << STATE << "] = {\n";
+    st << "using hash_type = std::uint64_t;\n";
+    st << "const hash_type hash_v[" << H << "][" << W << "][" << STATE << "] = {\n";
     for (int h = 0; h < H; h++){
       st << "{";
       for (int w = 0; w < W; w++){
         st << "{";
         for (int s = 0; s < STATE; s++){
-          st << rands[h][w][s] << ",";
+          st << rands[h][w][s] << "ULL,";
         }
         st << "},\n";
       }

@@ -1,0 +1,72 @@
+#ifndef INCLUDE_TAKUMI_UTIL_HPP
+#define INCLUDE_TAKUMI_UTIL_HPP
+
+#include <cassert>
+#include <cstdint>
+#include <cstdio>
+
+namespace procon26 {
+namespace takumi {
+namespace util {
+
+template <typename T>
+struct EBoard : public T {
+  using Derived = T;
+
+  EBoard() : Derived(), eval(-1) {
+    used_[0] = used_[1] = used_[2] = used_[3] = 0;
+  }
+
+  EBoard(Derived b) : Derived(b), eval(-1) {
+    used_[0] = used_[1] = used_[2] = used_[3] = 0;
+  }
+
+  bool isUsed(int id) const {
+    assert(0 <= id && id < 256);
+    return ((used_[id >> 6] >> (id & 63)) & 1) != 0;
+  }
+
+  void useTile(int id) {
+    eval = -1;
+    assert(!isUsed(id));
+    used_[id >> 6] |= 1ull << (id & 63);
+  }
+
+  bool operator<(const EBoard& rhs) const { return eval < rhs.eval; }
+  bool operator>(const EBoard& rhs) const { return eval > rhs.eval; }
+  bool operator==(const EBoard& rhs) const { return eval == rhs.eval; }
+
+  int eval;
+
+ private:
+  std::uint64_t used_[4];
+};
+
+int getColor(int c) {
+  if (c == 0) return 47;
+  if (c == 1) return 40;
+  return (c - 2) % 6 + 41;
+}
+
+template <typename T>
+void dumpBoard(const T& board, bool number = false) {
+  std::puts("-----------------");
+  for (int y = 0; y < 32; y++) {
+    for (int x = 0; x < 32; x++) {
+      auto c = board.at(x, y);
+      if (number) {
+        std::printf("%4d", c);
+      } else {
+        std::printf("\x1b[%dm  \x1b[49m", getColor(c));
+      }
+    }
+    std::puts("");
+  }
+  std::printf("blanks: %d\n", board.blanks());
+  std::puts("-----------------");
+}
+}
+}
+}
+
+#endif
