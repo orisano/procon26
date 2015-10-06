@@ -1,5 +1,7 @@
 #include "BitBoard.hpp"
 #include <limits>
+#include <cstdio>
+#include <iostream>
 
 namespace {
 const int BIT_MARGIN = 10;
@@ -102,10 +104,17 @@ bool BitBoard::canPutStrong(const tile_type &tile, int x, int y) const {
 
   auto mins = std::numeric_limits<state_type>::max();
   for (int i = 0; i < tile_type::MASK_SIZE; i++) {
-    auto v = neighbor_mask[i] >> BIT_MARGIN;
-    for (int j; j = __builtin_ffsl(v) - 1, ~j; v &= v - 1) {
+    auto v = neighbor_mask[i];
+    for (int j; (j = __builtin_ffsl(v)); v &= v - 1) {
+      j -= BIT_MARGIN + 1;
+      // std::cout << "{x: " << j << ", y: " << y + i - 1 << "} => "
+      //          << (int)state[y + i - 1][j] << "\n";
+      mins = std::min<decltype(mins)>(mins, state[y + i - 1][j]);
     }
   }
+  // #define DUMP(x) #x ": " << (int) x
+  //  std::cout << "{" << DUMP(mins) << "," << DUMP(tile.cell_value) << ","
+  //            << DUMP(mini) << "}\n";
   return mins < tile.cell_value || mins == mini;
 }
 

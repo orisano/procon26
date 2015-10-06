@@ -30,13 +30,6 @@ struct Evaluater {
 
   template <typename T>
   inline int eval(const T &board) const {
-    int maxi = 0;
-    for (int y = 0; y < SIZE; y++) {
-      for (int x = 0; x < SIZE; x++) {
-        int c = board.at(x, y);
-        if (maxi < c) maxi = c;
-      }
-    }
     int density = 0;
     for (int y = 0; y < SIZE; y++) {
       for (int x = 0; x < SIZE; x++) {
@@ -55,7 +48,7 @@ struct Evaluater {
       }
     }
 
-    return board.blanks() + density + maxi;
+    return board.blanks() + density + board.maxi;
   }
 
   const Home home;
@@ -116,9 +109,9 @@ Answer Beam::solve(const Home &home, const int millisec,
                   auto nb = b;
                   nb.put(tile, x, y);
                   nb.useTile(i);
-                  auto hashv = zobrist.hash(nb);
-                  if (vis.count(hashv)) continue;
-                  vis.insert(hashv);
+                  // auto hashv = zobrist.hash(nb);
+                  // if (vis.count(hashv)) continue;
+                  // vis.insert(hashv);
                   nxt.emplace_back(std::move(nb));
                 }
               }
@@ -140,15 +133,15 @@ Answer Beam::solve(const Home &home, const int millisec,
 
     if (nxt.size() > BEAM_WIDTH) {
       benchmark("eval") {
-        for (auto &b : nxt) {
+        std::for_each(nxt.begin(), nxt.end(), [&evaluater](board_ex &b) {
           b.eval = evaluater.eval(b);
-        }
+        });
       }
       std::partial_sort(nxt.begin(), nxt.begin() + BEAM_WIDTH, nxt.end());
       nxt.erase(nxt.begin() + BEAM_WIDTH, nxt.end());
     }
     beam = nxt;
-    util::dumpBoard(best, true);
+    util::dumpBoard(best);
   }
   util::dumpBoard(best, true);
   return Answer();

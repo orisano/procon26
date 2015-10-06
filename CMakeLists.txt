@@ -5,7 +5,7 @@ project(2015)
 #set(CMAKE_CXX_COMPILER_ARG1 "clang++")
 set(CMAKE_CXX_COMPILER g++-5)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY bin)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1y -O3 -msse -Wall -ltcmalloc")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1y -O3 -msse -march=corei7 -Wall -ltcmalloc -DNDEBUG -D_GLIBCXX_PARALLEL -fopenmp -pipe")
 
 set(BOARD_TILE
     Board.cpp
@@ -39,6 +39,11 @@ set(BEAM_SOURCE_FILES
     Takumi/Beam.hpp
     BeamMain.cpp)
 
+  set(BIT_BOARD_TEST_FIlES
+    ${CORE_FILES}
+    ${BIT_BOARD_TILE}
+    Test/BitBoardTest.cpp)
+
 set(BIT_BEAM_SOURCE_FILES
     ${CORE_FILES}
     ${BIT_BOARD_TILE}
@@ -58,7 +63,14 @@ set(GET_ANS_SOURCE_FILES
     Takumi/Jin.hpp
     JinMain.cpp)
 
+  set(INTERACTIVE_TEST_SOURCE_FILES
+    ${CORE_FILES}
+    ${BIT_BOARD_TILE}
+    Test/BitBoardInteractive.cpp)
+
 add_executable(getAns ${GET_ANS_SOURCE_FILES})
 add_executable(Beam ${BEAM_SOURCE_FILES})
 add_executable(BitBeam ${BIT_BEAM_SOURCE_FILES})
 add_executable(Jin ${JIN_SOURCE_FILES})
+add_executable(BitBoardTest ${BIT_BOARD_TEST_FIlES})
+add_executable(InteractiveTest ${INTERACTIVE_TEST_SOURCE_FILES})
