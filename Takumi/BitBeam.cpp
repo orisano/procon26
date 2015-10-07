@@ -55,7 +55,9 @@ int getArea(const BitBoard &board) {
       if (board.at(x, y) == 0) {
         auto p = uf.root(x, y);
         if (!ba.get(p)) {
-          res++;
+          if (uf.size(x, y) <= 4) {
+            res++;
+          }
           ba.set(p);
         }
       }
@@ -101,8 +103,8 @@ inline int evalBoard(const BitBoard &board) {
     }
   }
   int area = 0;
-  // area = getArea(board);
-  return board.blanks() + density + 10 * area;
+  area = getArea(board);
+  return board.blanks() + density + 50 * area;
 }
 
 int getColor(int c) {
