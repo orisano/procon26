@@ -12,7 +12,7 @@
 #include "../../../../orliv/benchmark.hpp"
 #include "../external/cmdline/cmdline.h"
 
-#define BEAM_BENCH
+// #define BEAM_BENCH
 
 namespace {
 const int dx[] = {0, 0, 1, -1, 1, 1, -1, -1};
@@ -21,6 +21,7 @@ const int ONE_STEP = 200;
 const int SIZE = 32;
 // const int tri[] = {0, 1, 4, 10, 12};
 const int pn[] = {0, 1, 3, 7, 10, 14, 18, 22, 26};
+// const int pn[] = {0, 1, 15, 7, 20, 14, 18, 22, 26};
 // const int pn[] = {0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 
 struct Evaluater {
@@ -42,12 +43,12 @@ struct Evaluater {
             cnt++;
             continue;
           }
-          cnt += (board.at(nx, ny) != 0);
+          int c = board.at(nx, ny);
+          cnt += (c != 0);
         }
         density += pn[cnt];
       }
     }
-
     return board.blanks() + density + board.maxi;
   }
 
@@ -109,9 +110,8 @@ Answer Beam::solve(const Home &home, const int millisec,
                   auto nb = b;
                   nb.put(tile, x, y);
                   nb.useTile(i);
-                  // auto hashv = zobrist.hash(nb);
-                  // if (vis.count(hashv)) continue;
-                  // vis.insert(hashv);
+                  if (vis.count(nb.hashv)) continue;
+                  vis.insert(nb.hashv);
                   nxt.emplace_back(std::move(nb));
                 }
               }

@@ -4,7 +4,6 @@
 #include <cstdint>
 #include <cassert>
 #include <limits>
-
 #include "Board.hpp"
 #include "BitTile.hpp"
 
@@ -13,6 +12,7 @@ namespace board {
 
 struct BitBoard {
   using tile_type = tile::BitTile;
+  using hash_type = std::uint64_t;
   using cell_type = std::uint32_t;
   using size_type = std::uint16_t;
   using state_type = std::uint8_t;
@@ -25,6 +25,7 @@ struct BitBoard {
   state_type state[SIZE][SIZE];
   state_type mini = std::numeric_limits<state_type>::max();
   size_type zk = 0;
+  hash_type hashv = 0;
 
   BitBoard();
 

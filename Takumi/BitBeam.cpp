@@ -175,9 +175,9 @@ Answer BitBeam::solve(const Home &home, int millisec, cmdline::parser &parser) {
 
   // auto start = std::chrono::high_resolution_clock::now();
   std::vector<EBoard> nxt;
-  nxt.reserve(120000);
+  nxt.reserve(550000);
   std::unordered_set<std::uint64_t> vis;
-  vis.reserve(120000);
+  vis.reserve(550000);
 
   auto best = initial;
   int tile_id = 0;
@@ -209,10 +209,9 @@ Answer BitBeam::solve(const Home &home, int millisec, cmdline::parser &parser) {
                 EBoard nb = b;
                 nb.put(tile.value(), x, y);
                 nb.useTile(tile_id);
-                auto hashv = zb.hash(nb);
-                if (vis.count(hashv)) continue;
-                vis.insert(hashv);
-                nxt.emplace_back(nb);
+                if (vis.count(nb.hashv)) continue;
+                vis.insert(nb.hashv);
+                nxt.emplace_back(std::move(nb));
               }
               tile.reverse();
               for (int r = 0; r < 4; r++, tile.rotate()) {
@@ -220,10 +219,9 @@ Answer BitBeam::solve(const Home &home, int millisec, cmdline::parser &parser) {
                 EBoard nb = b;
                 nb.put(tile.value(), x, y);
                 nb.useTile(tile_id);
-                auto hashv = zb.hash(nb);
-                if (vis.count(hashv)) continue;
-                vis.insert(hashv);
-                nxt.emplace_back(nb);
+                if (vis.count(nb.hashv)) continue;
+                vis.insert(nb.hashv);
+                nxt.emplace_back(std::move(nb));
               }
             }
           }
@@ -232,14 +230,20 @@ Answer BitBeam::solve(const Home &home, int millisec, cmdline::parser &parser) {
 #endif
       }
     }
+    auto bbest = std::min_element(nxt.begin(), nxt.end(),
+                                  [](const EBoard &a, const EBoard &b) {
+      return a.blanks() < b.blanks();
+    });
+    if (bbest != nxt.end() && bbest->blanks() < best.blanks()) {
+      best = *bbest;
+    }
     printf("nxt size: %lu\n", nxt.size());
     if ((int)nxt.size() > BEAM_WIDTH) {
 #ifndef EVAL_ERASE
       benchmark("eval") {
-        for (auto &b : nxt) {
+        std::for_each(nxt.begin(), nxt.end(), [](EBoard &b) {
           if (b.eval == -1) b.eval = evalBoard(b);
-          if (b.blanks() < best.blanks()) best = b;
-        }
+        });
       }
 #endif
       benchmark("sort") {
@@ -249,12 +253,6 @@ Answer BitBeam::solve(const Home &home, int millisec, cmdline::parser &parser) {
       }
       nxt.erase(begin(nxt) + BEAM_WIDTH, end(nxt));
     }
-    auto bbest = std::min_element(begin(nxt), end(nxt),
-                                  [](const EBoard &a, const EBoard &b) {
-      return a.blanks() < b.blanks();
-    });
-    if (bbest != std::end(nxt) && bbest->blanks() < best.blanks())
-      best = *bbest;
     std::swap(beam, nxt);
     tile_id++;
   }
