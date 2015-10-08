@@ -103,7 +103,7 @@ inline int evalBoard(const BitBoard &board) {
     }
   }
   int area = 0;
-  area = getArea(board);
+  // area = getArea(board);
   return board.blanks() + density + 50 * area;
 }
 

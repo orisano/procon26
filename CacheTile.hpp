@@ -10,11 +10,13 @@ struct CacheTile {
 
   CacheTile(const TileType& tile) : rotate_(0), inverse_(0) {
     cache[0] = tile;
-    cache[1] = tile;
-    cache[1].reverse();
-    for (int i = 2; i < 8; i++) {
-      cache[i] = cache[i - 2];
+    cache[4] = tile;
+    cache[4].reverse();
+    for (int i = 1; i < 4; i++) {
+      cache[i] = cache[i - 1];
       cache[i].rotate();
+      cache[i + 4] = cache[i + 3];
+      cache[i + 4].rotate();
     }
   }
   void fill(int c) {

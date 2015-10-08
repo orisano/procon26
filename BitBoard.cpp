@@ -39,6 +39,8 @@ BitBoard::BitBoard(const Board &board) {
       }
     }
   }
+  initial_zk = SIZE * SIZE - initial_zk;
+  blank = initial_zk;
 }
 
 bool BitBoard::inBounds(int x, int y) const {
@@ -46,10 +48,11 @@ bool BitBoard::inBounds(int x, int y) const {
 }
 
 BitBoard::cell_type BitBoard::at(int x, int y) const {
-  assert(inBounds(x, y));
-  if ((initial[y] >> x) & 1) return cell_type(1);
-  if ((data[y] >> x) & 1) return static_cast<cell_type>(state[y][x]) + 2;
-  return 0;
+  // assert(inBounds(x, y));
+  return state[y][x] + (((data[y] >> x) & 1) << 1) + ((initial[y] >> x) & 1);
+  // if ((initial[y] >> x) & 1) return cell_type(1);
+  // if ((data[y] >> x) & 1) return static_cast<cell_type>(state[y][x]) + 2;
+  // return 0;
 }
 
 bool BitBoard::canPut(const tile_type &tile, int x, int y) const {
@@ -72,7 +75,7 @@ bool BitBoard::canPut(const tile_type &tile, int x, int y) const {
   }
   if (conflict) return false;
 
-  if (!zk) return true;
+  if (blank == initial_zk) return true;
 
   mask_type neighbor_mask[tile_type::MASK_SIZE];
   for (int i = 0; i < tile_type::MASK_SIZE; i++) {
@@ -91,7 +94,7 @@ bool BitBoard::canPutStrong(const tile_type &tile, int x, int y) const {
   using mask_type = tile_type::mask_type;
   const mask_type zero = 0;
 
-  if (!zk) return true;
+  if (blank == initial_zk) return true;
 
   mask_type neighbor_mask[tile_type::MASK_SIZE];
   for (int i = 0; i < tile_type::MASK_SIZE; i++) {
@@ -136,11 +139,9 @@ void BitBoard::put(const tile_type &tile, int x, int y) {
     }
   }
   mini = std::min<decltype(mini)>(mini, tile.cell_value);
-  zk += tile.zk;
+  blank -= tile.zk;
 }
 
-BitBoard::size_type BitBoard::blanks() const {
-  return SIZE * SIZE - zk - initial_zk;
-}
+BitBoard::size_type BitBoard::blanks() const { return blank; }
 }
 }

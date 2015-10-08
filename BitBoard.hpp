@@ -25,6 +25,7 @@ struct BitBoard {
   state_type state[SIZE][SIZE];
   state_type mini = std::numeric_limits<state_type>::max();
   size_type zk = 0;
+  size_type blank;
   hash_type hashv = 0;
 
   BitBoard();

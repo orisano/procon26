@@ -9,7 +9,7 @@
 #include "../Tile.hpp"
 #include "../CacheTile.hpp"
 #include "ZobristHash.hpp"
-#include "../../../../orliv/benchmark.hpp"
+#include "../external/orliv/benchmark.hpp"
 #include "../external/cmdline/cmdline.h"
 
 // #define BEAM_BENCH
@@ -19,6 +19,7 @@ const int dx[] = {0, 0, 1, -1, 1, 1, -1, -1};
 const int dy[] = {1, -1, 0, 0, 1, -1, 1, -1};
 const int ONE_STEP = 200;
 const int SIZE = 32;
+const int SMALL_TILE_PENALTY = 20;
 // const int tri[] = {0, 1, 4, 10, 12};
 const int pn[] = {0, 1, 3, 7, 10, 14, 18, 22, 26};
 // const int pn[] = {0, 1, 15, 7, 20, 14, 18, 22, 26};
@@ -27,7 +28,16 @@ const int pn[] = {0, 1, 3, 7, 10, 14, 18, 22, 26};
 struct Evaluater {
   using Home = procon26::Home;
 
-  Evaluater(const Home &home) : home(home) {}
+  Evaluater(const Home &home) : home(home), N(home.tiles.size()) {}
+
+  struct Functor {
+    const Evaluater *const that;
+    Functor(const Evaluater *const that) : that(that) {}
+    template <typename T>
+    void operator()(T &board) {
+      board.eval = that->eval(board);
+    }
+  };
 
   template <typename T>
   inline int eval(const T &board) const {
@@ -49,13 +59,19 @@ struct Evaluater {
         density += pn[cnt];
       }
     }
-    return board.blanks() + density + board.maxi;
+    int penalty = 0;
+    for (int i = 0; i < N; i++) {
+      if (board.isUsed(i) && home.tiles[i].zk <= 4u) {
+        penalty += SMALL_TILE_PENALTY + i * 3;
+      }
+    }
+    return board.blanks() + density + penalty + board.maxi;
   }
-
+  Functor &&operator()() { return std::move(Functor(this)); }
   const Home home;
+  const int N;
 };
 }
-
 namespace procon26 {
 namespace takumi {
 
@@ -68,8 +84,7 @@ Answer Beam::solve(const Home &home, const int millisec,
   using board_ex = util::EBoard<board_t>;
   using boards_t = std::vector<board_ex>;
 
-  const int BEAM_WIDTH = parser.get<int>("beam_width");
-  const bool VERBOSE = parser.exist("verbose");
+  const unsigned long BEAM_WIDTH = parser.get<int>("beam_width");
   const int N = home.tiles.size();
 
   orliv::ZobristHash<std::uint64_t, 32, 32, 2> zobrist;
@@ -82,16 +97,17 @@ Answer Beam::solve(const Home &home, const int millisec,
     tiles.emplace_back(tile_t(tile));
     tiles.back().fill(id++);
   }
-  boards_t beam, nxt;
+  boards_t beam;
   beam.emplace_back(initial);
   beam.reserve(BEAM_WIDTH);
+  boards_t nxt;
   nxt.reserve(550000);
 
   std::unordered_set<std::uint64_t> vis;
   vis.reserve(550000);
 
   auto best = initial;
-
+  auto evalf = [&evaluater](board_ex &b) { b.eval = evaluater.eval(b); };
   while (beam.size()) {
     vis.clear();
     nxt.clear();
@@ -102,9 +118,11 @@ Answer Beam::solve(const Home &home, const int millisec,
 #endif
           for (int i = 0; i < N; i++) {
             if (b.isUsed(i)) continue;
-            for (int y = -7; y < 32; y++) {
-              for (int x = -7; x < 32; x++) {
-                for (const auto &tile : tiles[i].iter()) {
+
+            int tc = 0;
+            for (const auto &tile : tiles[i].iter()) {
+              for (int y = -7; y < 32; y++) {
+                for (int x = -7; x < 32; x++) {
                   if (!b.canPut(tile, x, y)) continue;
                   if (!b.canPutStrong(tile, x, y)) continue;
                   auto nb = b;
@@ -115,6 +133,10 @@ Answer Beam::solve(const Home &home, const int millisec,
                   nxt.emplace_back(std::move(nb));
                 }
               }
+              tc++;
+              if (tile.zk == 1u) break;
+              if (tile.zk == 2u && tc == 2) break;
+              if (tile.zk == 3u && tc == 4) break;
             }
           }
 #ifdef BEAM_BENCH
@@ -132,11 +154,7 @@ Answer Beam::solve(const Home &home, const int millisec,
     }
 
     if (nxt.size() > BEAM_WIDTH) {
-      benchmark("eval") {
-        std::for_each(nxt.begin(), nxt.end(), [&evaluater](board_ex &b) {
-          b.eval = evaluater.eval(b);
-        });
-      }
+      benchmark("eval") { std::for_each(nxt.begin(), nxt.end(), evalf); }
       std::partial_sort(nxt.begin(), nxt.begin() + BEAM_WIDTH, nxt.end());
       nxt.erase(nxt.begin() + BEAM_WIDTH, nxt.end());
     }
