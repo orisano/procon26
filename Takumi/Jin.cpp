@@ -114,9 +114,8 @@ Answer Jin::solve(const Home& home, const int millisec,
                 auto nb = b;
                 nb.put(tile, x, y);
                 nb.useTile(j);
-                auto hashv = zb.hash(nb);
-                if (vis.count(hashv)) continue;
-                vis.insert(hashv);
+                if (vis.count(nb.hashv)) continue;
+                vis.insert(nb.hashv);
                 if (bestb.blanks() > nb.blanks()) {
                   bestb = nb;
                   util::dumpBoard(bestb, true);
