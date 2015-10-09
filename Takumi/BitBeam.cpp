@@ -67,25 +67,25 @@ int getArea(const BitBoard &board) {
 }
 
 inline int evalBoard(const BitBoard &board) {
-  /*
-    static orliv::BoolArray<2048> ba;
-    ba.clear();
-    int cnt = 0;
-    for (int y = 0; y < SIZE; y++){
-      for (int x = 0; x < SIZE; x++){
-        if (board.at(x, y) < 2) continue;
-        for (int d = 0; d < dx.size(); d++){
-          const int nx = x + dx[d], ny = y + dy[d];
-          if (!board.inBounds(nx, ny)) continue;
-          const int nv = ny * SIZE + nx;
-          if (ba.get(nv)) continue;
-          cnt += !board.at(nx, ny);
-          ba.set(nv);
-        }
+#if 0
+  static orliv::BoolArray<2048> ba;
+  ba.clear();
+  int cnt = 0;
+  for (int y = 0; y < SIZE; y++) {
+    for (int x = 0; x < SIZE; x++) {
+      if (board.at(x, y) < 2) continue;
+      for (int d = 0; d < dx.size(); d++) {
+        const int nx = x + dx[d], ny = y + dy[d];
+        if (!board.inBounds(nx, ny)) continue;
+        const int nv = ny * SIZE + nx;
+        if (ba.get(nv)) continue;
+        cnt += !board.at(nx, ny);
+        ba.set(nv);
       }
     }
-    return -cnt + board.blanks();
-  */
+  }
+  return -cnt + board.blanks();
+#else
   int density = 0;
   for (int y = 0; y < SIZE; y++) {
     for (int x = 0; x < SIZE; x++) {
@@ -103,8 +103,9 @@ inline int evalBoard(const BitBoard &board) {
     }
   }
   int area = 0;
-  // area = getArea(board);
+  area = getArea(board);
   return board.blanks() + density + 50 * area;
+#endif
 }
 
 int getColor(int c) {
