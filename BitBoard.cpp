@@ -134,8 +134,9 @@ void BitBoard::put(const tile_type &tile, int x, int y) {
   for (int i = 0; i < 8; i++) {
     for (int j = 0; j < 8; j++) {
       if (!tile.at(j, i)) continue;
-      state[y + i][x + j] = tile.cell_value;
-      hashv ^= orliv::hash_v[y + i][x + j][1];
+      const int cy = y + i, cx = x + j;
+      state[cy][cx] = tile.cell_value;
+      hashv ^= orliv::hash_v[cy][cx][1];
     }
   }
   mini = std::min<decltype(mini)>(mini, tile.cell_value);

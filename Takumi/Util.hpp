@@ -48,20 +48,20 @@ int getColor(int c) {
 
 template <typename T>
 void dumpBoard(const T& board, bool number = false) {
-  std::puts("-----------------");
+  std::fprintf(stderr, "-----------------\n");
   for (int y = 0; y < T::SIZE; y++) {
     for (int x = 0; x < T::SIZE; x++) {
       auto c = board.at(x, y);
       if (number) {
-        std::printf("%4d", c);
+        std::fprintf(stderr, "%4d", c);
       } else {
-        std::printf("\x1b[%dm  \x1b[49m", getColor(c));
+        std::fprintf(stderr, "\x1b[%dm  \x1b[49m", getColor(c));
       }
     }
-    std::puts("");
+    std::fprintf(stderr, "\n");
   }
-  std::printf("blanks: %d\n", board.blanks());
-  std::puts("-----------------");
+  std::fprintf(stderr, "blanks: %d\n", board.blanks());
+  std::fprintf(stderr, "-----------------\n");
 }
 }
 }

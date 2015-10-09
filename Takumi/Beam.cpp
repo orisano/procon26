@@ -87,7 +87,6 @@ Answer Beam::solve(const Home &home, const int millisec,
   const unsigned long BEAM_WIDTH = parser.get<int>("beam_width");
   const int N = home.tiles.size();
 
-  orliv::ZobristHash<std::uint64_t, 32, 32, 2> zobrist;
   Evaluater evaluater(home);
 
   board_ex initial(board_t(home.board));
@@ -113,35 +112,29 @@ Answer Beam::solve(const Home &home, const int millisec,
     nxt.clear();
     benchmark("next beam generate") {
       for (const auto &b : beam) {
-#ifdef BEAM_BENCH
-        benchmark("beam") {
-#endif
-          for (int i = 0; i < N; i++) {
-            if (b.isUsed(i)) continue;
+        for (int i = 0; i < N; i++) {
+          if (b.isUsed(i)) continue;
 
-            int tc = 0;
-            for (const auto &tile : tiles[i].iter()) {
-              for (int y = -7; y < 32; y++) {
-                for (int x = -7; x < 32; x++) {
-                  if (!b.canPut(tile, x, y)) continue;
-                  if (!b.canPutStrong(tile, x, y)) continue;
-                  auto nb = b;
-                  nb.put(tile, x, y);
-                  nb.useTile(i);
-                  if (vis.count(nb.hashv)) continue;
-                  vis.insert(nb.hashv);
-                  nxt.emplace_back(std::move(nb));
-                }
+          int tc = 0;
+          for (const auto &tile : tiles[i].iter()) {
+            for (int y = -7; y < 32; y++) {
+              for (int x = -7; x < 32; x++) {
+                if (!b.canPut(tile, x, y)) continue;
+                if (!b.canPutStrong(tile, x, y)) continue;
+                auto nb = b;
+                nb.put(tile, x, y);
+                nb.useTile(i);
+                if (vis.count(nb.hashv)) continue;
+                vis.insert(nb.hashv);
+                nxt.emplace_back(std::move(nb));
               }
-              tc++;
-              if (tile.zk == 1u) break;
-              if (tile.zk == 2u && tc == 2) break;
-              if (tile.zk == 3u && tc == 4) break;
             }
+            tc++;
+            if (tile.zk == 1u) break;
+            if (tile.zk == 2u && tc == 2) break;
+            if (tile.zk == 3u && tc == 4) break;
           }
-#ifdef BEAM_BENCH
         }
-#endif
       }
     }
     std::cerr << "nxt size:" << nxt.size() << std::endl;
