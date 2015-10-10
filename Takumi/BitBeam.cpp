@@ -12,6 +12,7 @@
 #include "../external/orliv/uf.hpp"
 #include "../external/orliv/bool_array.hpp"
 #include "../external/cmdline/cmdline.h"
+#include <functional>
 
 namespace {
 const std::array<int, 24> dx = {0, 0, 1,  -1, 1, 1,  -1, -1, 2, -2, 0, 0,
@@ -21,6 +22,7 @@ const std::array<int, 24> dy = {1, -1, 0, 0,  1, -1, -1, 1,  0, 0, 2, -2,
 const int SIZE = 32;
 // const int pn[] = {0, 1, 3, 7, 13};
 const int pn[] = {0, 1, 3, 7, 20};
+// const int pn[] = {0, 1, 1, 1, 1};
 // const int pn[] = {0, 1, 5, 20, 20};
 // const int pn[] = {0, 1, 3, 7, 12};
 // const int pn[] = {-1, -1, 3, 9, 27};
@@ -64,7 +66,7 @@ int getArea(const BitBoard &board) {
       }
     }
   }
-  return res * 32 + maxi / mini;
+  return res;
 }
 
 inline int evalBoard(const BitBoard &board) {
@@ -82,6 +84,34 @@ inline int evalBoard(const BitBoard &board) {
         if (ba.get(nv)) continue;
         cnt += !board.at(nx, ny);
         ba.set(nv);
+      }
+    }
+  }
+  return -cnt + board.blanks();
+#else
+#if 0 
+  static orliv::BoolArray<2048> vis;
+  vis.clear();
+  std::function<int(int, int, int)> dfs = [&](int x, int y, int depth) {
+    if (depth == 0) return 0;
+    if (!board.inBounds(x, y)) return 0;
+    if (vis.get(y * SIZE + x)) return 0;
+    if (board.at(x, y) != 0) return 0;
+    vis.set(y * SIZE + x);
+    int res = 1;
+    for (int d = 0; d < 4; d++) {
+      const int nx = x + dx[d], ny = y + dy[d];
+      res += dfs(nx, ny, depth - 1);
+    }
+    return res;
+  };
+  int cnt = 0;
+  for (int y = 0; y < SIZE; y++) {
+    for (int x = 0; x < SIZE; x++) {
+      if (board.at(x, y) < 2) continue;
+      for (int d = 0; d < 4; d++) {
+        const int nx = x + dx[d], ny = y + dy[d];
+        cnt += dfs(nx, ny, 5);
       }
     }
   }
@@ -107,6 +137,7 @@ inline int evalBoard(const BitBoard &board) {
   // area = getArea(board);
   return board.blanks() + density + 50 * area;
 #endif
+#endif
 }
 }
 
@@ -124,6 +155,12 @@ Answer BitBeam::solve(const Home &home, int millisec, cmdline::parser &parser) {
   const std::size_t BEAM_WIDTH = parser.get<int>("beam_width");
   const std::size_t N = home.tiles.size();
 
+  const auto evalf = [](board_ex &b) {
+    if (b.eval == -1) b.eval = evalBoard(b);
+  };
+  const auto comp_blank = [](
+      const board_ex &a, const board_ex &b) { return a.blanks() < b.blanks(); };
+
   board_ex initial(board_t(home.board));
   tiles_t tiles;
 
@@ -133,6 +170,8 @@ Answer BitBeam::solve(const Home &home, int millisec, cmdline::parser &parser) {
     tiles.back().fill(id++);
   }
   boards_t beam, nxt;
+
+  evalf(initial);
   beam.emplace_back(initial);
   nxt.reserve(550000);
 
@@ -140,11 +179,6 @@ Answer BitBeam::solve(const Home &home, int millisec, cmdline::parser &parser) {
   vis.reserve(550000);
 
   auto best = initial;
-  const auto evalf = [](board_ex &b) {
-    if (b.eval == -1) b.eval = evalBoard(b);
-  };
-  const auto comp_blank = [](
-      const board_ex &a, const board_ex &b) { return a.blanks() < b.blanks(); };
 
   std::size_t tile_id = 0;
   while ((tile_id < N && beam.size())) {
@@ -166,6 +200,39 @@ Answer BitBeam::solve(const Home &home, int millisec, cmdline::parser &parser) {
               nb.useTile(tile_id);
               if (vis.count(nb.hashv)) continue;
               vis.insert(nb.hashv);
+              int e = b.eval;
+              for (int ty = 0; ty < 8; ty++) {
+                for (int tx = 0; tx < 8; tx++) {
+                  if (!tile.at(tx, ty)) continue;
+                  const int cx = tx + x, cy = ty + y;
+                  int cnt = 0;
+                  for (int d = 0; d < 4; d++) {
+                    const int nx = cx + dx[d], ny = cy + dy[d];
+                    if (!b.inBounds(nx, ny) || b.at(nx, ny) != 0) {
+                      cnt++;
+                    }
+
+                    int ccnt = 0;
+                    int ncnt = 0;
+                    for (int dd = 0; dd < 4; dd++) {
+                      const int nnx = nx + dx[dd], nny = ny + dy[dd];
+                      if (!b.inBounds(nnx, nny) || b.at(nnx, nny) != 0) {
+                        ccnt++;
+                      }
+                      if (!nb.inBounds(nnx, nny) || nb.at(nnx, nny) != 0) {
+                        ncnt++;
+                      }
+                    }
+                    ccnt *= !(!b.inBounds(nx, ny) || b.at(nx, ny) != 0);
+                    ncnt *= !(!nb.inBounds(nx, ny) || nb.at(nx, ny) != 0);
+                    e -= pn[ccnt];
+                    e += pn[ncnt];
+                  }
+                  e -= pn[cnt];
+                }
+              }
+              e -= tile.zk;
+              nb.eval = e;
               nxt.emplace_back(std::move(nb));
             }
           }
@@ -178,7 +245,9 @@ Answer BitBeam::solve(const Home &home, int millisec, cmdline::parser &parser) {
     }
     std::fprintf(stderr, "nxt size: %lu\n", nxt.size());
     if (nxt.size() > BEAM_WIDTH) {
+      /*
       benchmark("eval") { std::for_each(nxt.begin(), nxt.end(), evalf); }
+      */
       benchmark("sort") {
         std::partial_sort(nxt.begin(), nxt.begin() + BEAM_WIDTH, nxt.end());
       }

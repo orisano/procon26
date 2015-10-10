@@ -60,11 +60,13 @@ struct Evaluater {
       }
     }
     int penalty = 0;
+    /*
     for (int i = 0; i < N; i++) {
       if (board.isUsed(i) && home.tiles[i].zk <= 4u) {
         penalty += SMALL_TILE_PENALTY + i * 3;
       }
     }
+    */
     return board.blanks() + density + penalty + board.maxi;
   }
   Functor &&operator()() { return std::move(Functor(this)); }
@@ -97,7 +99,6 @@ Answer Beam::solve(const Home &home, const int millisec,
     tiles.back().fill(id++);
   }
   boards_t beam;
-  beam.emplace_back(initial);
   beam.reserve(BEAM_WIDTH);
   boards_t nxt;
   nxt.reserve(550000);
@@ -107,6 +108,8 @@ Answer Beam::solve(const Home &home, const int millisec,
 
   auto best = initial;
   auto evalf = [&evaluater](board_ex &b) { b.eval = evaluater.eval(b); };
+  evalf(initial);
+  beam.emplace_back(initial);
   while (beam.size()) {
     vis.clear();
     nxt.clear();
@@ -126,6 +129,40 @@ Answer Beam::solve(const Home &home, const int millisec,
                 nb.useTile(i);
                 if (vis.count(nb.hashv)) continue;
                 vis.insert(nb.hashv);
+                int e = b.eval;
+                for (int ty = 0; ty < 8; ty++) {
+                  for (int tx = 0; tx < 8; tx++) {
+                    if (!tile.at(tx, ty)) continue;
+                    const int cx = tx + x, cy = ty + y;
+                    int cnt = 0;
+                    for (int d = 0; d < 4; d++) {
+                      const int nx = cx + dx[d], ny = cy + dy[d];
+                      if (!b.inBounds(nx, ny) || b.at(nx, ny) != 0) {
+                        cnt++;
+                      }
+
+                      int ccnt = 0;
+                      int ncnt = 0;
+                      for (int dd = 0; dd < 4; dd++) {
+                        const int nnx = nx + dx[dd], nny = ny + dy[dd];
+                        if (!b.inBounds(nnx, nny) || b.at(nnx, nny) != 0) {
+                          ccnt++;
+                        }
+                        if (!nb.inBounds(nnx, nny) || nb.at(nnx, nny) != 0) {
+                          ncnt++;
+                        }
+                      }
+                      ccnt *= !(!b.inBounds(nx, ny) || b.at(nx, ny) != 0);
+                      ncnt *= !(!nb.inBounds(nx, ny) || nb.at(nx, ny) != 0);
+                      e -= pn[ccnt];
+                      e += pn[ncnt];
+                    }
+                    e -= pn[cnt];
+                  }
+                }
+                e -= tile.zk;
+                e += nb.maxi - b.maxi;
+                nb.eval = e;
                 nxt.emplace_back(std::move(nb));
               }
             }
@@ -147,7 +184,7 @@ Answer Beam::solve(const Home &home, const int millisec,
     }
 
     if (nxt.size() > BEAM_WIDTH) {
-      benchmark("eval") { std::for_each(nxt.begin(), nxt.end(), evalf); }
+      // benchmark("eval") { std::for_each(nxt.begin(), nxt.end(), evalf); }
       std::partial_sort(nxt.begin(), nxt.begin() + BEAM_WIDTH, nxt.end());
       nxt.erase(nxt.begin() + BEAM_WIDTH, nxt.end());
     }
