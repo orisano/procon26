@@ -6,6 +6,8 @@ project(2015)
 set(CMAKE_CXX_COMPILER g++-5)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY bin)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1y -O3 -msse -march=corei7 -Wall -ltcmalloc -DNDEBUG -D_GLIBCXX_PARALLEL -fopenmp -pipe")
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1y -O3 -msse -march=corei7 -Wall -ltcmalloc -DNDEBUG -pipe")
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1y -msse -Wall -ltcmalloc -DNDEBUG -pipe")
 
 set(BOARD_TILE
     Board.cpp
@@ -29,7 +31,8 @@ set(CORE_FILES
     Home.cpp
     Home.hpp
     Takumi/Takumi.hpp
-    Takumi/ZobristHash.hpp)
+    Takumi/ZobristHash.hpp
+    getAnswers.cpp)
 
 
 set(BEAM_SOURCE_FILES
@@ -54,6 +57,8 @@ set(BIT_BEAM_SOURCE_FILES
 set(GET_ANS_SOURCE_FILES
     ${CORE_FILES}
     ${BOARD_TILE}
+    BitBoard.cpp
+    BitTile.cpp
     getAnswer.cpp)
 
   set(JIN_SOURCE_FILES

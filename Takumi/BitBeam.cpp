@@ -5,6 +5,8 @@
 #include <chrono>
 #include <set>
 #include <unordered_set>
+#include <queue>
+#include <functional>
 #include "../BitBoard.hpp"
 #include "../BitTile.hpp"
 #include "../CacheTile.hpp"
@@ -12,7 +14,9 @@
 #include "../external/orliv/uf.hpp"
 #include "../external/orliv/bool_array.hpp"
 #include "../external/cmdline/cmdline.h"
-#include <functional>
+#include "../getAnswers.h"
+
+// #define EVAL_DIFF
 
 namespace {
 const std::array<int, 24> dx = {0, 0, 1,  -1, 1, 1,  -1, -1, 2, -2, 0, 0,
@@ -27,9 +31,27 @@ const int pn[] = {0, 1, 3, 7, 20};
 // const int pn[] = {0, 1, 3, 7, 12};
 // const int pn[] = {-1, -1, 3, 9, 27};
 
-using procon26::board::BitBoard;
+std::vector<int> gTiles;
 
-int getArea(const BitBoard &board) {
+using board_type = procon26::takumi::util::EBoard<procon26::board::BitBoard>;
+
+inline int lostZK(const std::vector<int> &regions,
+                  const std::vector<int> &tiles, int first) {
+  assert(std::is_sorted(regions.begin(), regions.end()));
+  std::priority_queue<int, std::vector<int>, std::greater<int>> useable_tile(
+      tiles.begin() + first, tiles.end());
+  int res = 0;
+  for (int region : regions) {
+    while (!useable_tile.empty() && region >= useable_tile.top()) {
+      region -= useable_tile.top();
+      useable_tile.pop();
+    }
+    res += region;
+  }
+  return res;
+}
+
+int getArea(const board_type &board) {
   orliv::UF2d uf(SIZE, SIZE);
   for (int y = 0; y < SIZE; y++) {
     for (int x = 0; x < SIZE - 1; x++) {
@@ -50,8 +72,9 @@ int getArea(const BitBoard &board) {
 
   static orliv::BoolArray<2048> ba;
   ba.clear();
-  int maxi = 0;
-  int mini = 10000;
+  static std::vector<int> regions(512);
+  regions.clear();
+
   for (int y = 0; y < SIZE; y++) {
     for (int x = 0; x < SIZE; x++) {
       if (board.at(x, y) == 0) {
@@ -60,16 +83,19 @@ int getArea(const BitBoard &board) {
           int k = uf.size(x, y);
           res++;
           ba.set(p);
-          mini = std::min(mini, k);
-          maxi = std::max(maxi, k);
+          regions.push_back(k);
         }
       }
     }
   }
-  return res;
+  std::sort(regions.begin(), regions.end());
+  for (int i = gTiles.size() - 1; i >= 0; i--) {
+    if (board.isUsed(i)) return lostZK(regions, gTiles, i + 1);
+  }
+  return lostZK(regions, gTiles, 0);
 }
 
-inline int evalBoard(const BitBoard &board) {
+inline int evalBoard(const board_type &board) {
 #if 0
   static orliv::BoolArray<2048> ba;
   ba.clear();
@@ -118,24 +144,33 @@ inline int evalBoard(const BitBoard &board) {
   return -cnt + board.blanks();
 #else
   int density = 0;
+  const auto pr = ~0u;
   for (int y = 0; y < SIZE; y++) {
+    const auto v = board.initial[y] | board.data[y];
     for (int x = 0; x < SIZE; x++) {
-      if (board.at(x, y)) continue;
+      if ((v >> x) & 1) continue;
       int cnt = 0;
+      cnt += !board.inBounds(x + 1, y) || (board.at(x + 1, y) != 0);
+      cnt += !board.inBounds(x - 1, y) || (board.at(x - 1, y) != 0);
+      cnt += !board.inBounds(x, y + 1) || (board.at(x, y + 1) != 0);
+      cnt += !board.inBounds(x, y - 1) || (board.at(x, y - 1) != 0);
+      /*
       for (int d = 0; d < 4; d++) {
         int nx = x + dx[d], ny = y + dy[d];
         if (!board.inBounds(nx, ny)) {
           cnt++;
           continue;
         }
-        cnt += board.at(nx, ny) != 0;
+        auto c = board.at(nx, ny);
+        cnt += c != 0;
       }
+      */
       density += pn[cnt];
     }
   }
   int area = 0;
   // area = getArea(board);
-  return board.blanks() + density + 50 * area;
+  return board.blanks() + density + 3 * area;
 #endif
 #endif
 }
@@ -152,8 +187,13 @@ Answer BitBeam::solve(const Home &home, int millisec, cmdline::parser &parser) {
   using board_ex = util::EBoard<board_t>;
   using boards_t = std::vector<board_ex>;
 
-  const std::size_t BEAM_WIDTH = parser.get<int>("beam_width");
+  std::size_t BEAM_WIDTH = parser.get<int>("beam_width");
+  const int end_time = parser.get<int>("time") * 1000;
   const std::size_t N = home.tiles.size();
+
+  for (const auto &tile : home.tiles) {
+    gTiles.push_back(tile.zk);
+  }
 
   const auto evalf = [](board_ex &b) {
     if (b.eval == -1) b.eval = evalBoard(b);
@@ -180,6 +220,8 @@ Answer BitBeam::solve(const Home &home, int millisec, cmdline::parser &parser) {
 
   auto best = initial;
 
+  auto begin_time = std::chrono::high_resolution_clock::now();
+
   std::size_t tile_id = 0;
   while ((tile_id < N && beam.size())) {
     std::fprintf(stderr, "tile_id: %lu / %lu\n", tile_id, tiles.size());
@@ -200,6 +242,7 @@ Answer BitBeam::solve(const Home &home, int millisec, cmdline::parser &parser) {
               nb.useTile(tile_id);
               if (vis.count(nb.hashv)) continue;
               vis.insert(nb.hashv);
+#ifdef EVAL_DIFF
               int e = b.eval;
               for (int ty = 0; ty < 8; ty++) {
                 for (int tx = 0; tx < 8; tx++) {
@@ -233,21 +276,29 @@ Answer BitBeam::solve(const Home &home, int millisec, cmdline::parser &parser) {
               }
               e -= tile.zk;
               nb.eval = e;
+#endif
               nxt.emplace_back(std::move(nb));
             }
           }
         }
       }
     }
+
     auto bbest = std::min_element(nxt.begin(), nxt.end(), comp_blank);
     if (bbest != nxt.end() && bbest->blanks() < best.blanks()) {
       best = *bbest;
     }
     std::fprintf(stderr, "nxt size: %lu\n", nxt.size());
+
+    auto now = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        now - begin_time).count();
+    if (end_time - duration <= 15 * 1000) BEAM_WIDTH = 10;
+
     if (nxt.size() > BEAM_WIDTH) {
-      /*
+#ifndef EVAL_DIFF
       benchmark("eval") { std::for_each(nxt.begin(), nxt.end(), evalf); }
-      */
+#endif
       benchmark("sort") {
         std::partial_sort(nxt.begin(), nxt.begin() + BEAM_WIDTH, nxt.end());
       }
@@ -257,6 +308,7 @@ Answer BitBeam::solve(const Home &home, int millisec, cmdline::parser &parser) {
     tile_id++;
   }
   util::dumpBoard(best, true);
+  getAns(home, best);
   return Answer();
 }
 

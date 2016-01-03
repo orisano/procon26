@@ -9,6 +9,7 @@
 #include <array>
 #include <unordered_map>
 #include <unordered_set>
+#include "../getAnswers.h"
 
 namespace {
 
@@ -134,6 +135,7 @@ Answer Jin::solve(const Home& home, const int millisec,
     if (!ok) break;
   }
   util::dumpBoard(bestb, true);
+  getAns(home, bestb);
   return Answer();
 }
 

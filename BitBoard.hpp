@@ -32,15 +32,16 @@ struct BitBoard {
 
   explicit BitBoard(const Board &board);
 
-  cell_type at(int x, int y) const;
-
+  inline cell_type at(int x, int y) const {
+    return state[y][x] + (((data[y] >> x) & 1) << 1) + ((initial[y] >> x) & 1);
+  }
   bool canPut(const tile_type &tile, int x, int y) const;
   bool canPutStrong(const tile_type &tile, int x, int y) const;
   void put(const tile_type &tile, int x, int y);
 
   size_type blanks() const;
 
-  bool inBounds(int x, int y) const;
+  inline bool inBounds(int x, int y) const { return (~31 & (x | y)) == 0; }
 };
 }
 }

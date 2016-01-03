@@ -11,8 +11,10 @@
 #include "ZobristHash.hpp"
 #include "../external/orliv/benchmark.hpp"
 #include "../external/cmdline/cmdline.h"
+#include "../getAnswers.h"
 
 // #define BEAM_BENCH
+// #define EVAL_DIFF
 
 namespace {
 const int dx[] = {0, 0, 1, -1, 1, 1, -1, -1};
@@ -42,6 +44,7 @@ struct Evaluater {
   template <typename T>
   inline int eval(const T &board) const {
     int density = 0;
+
     for (int y = 0; y < SIZE; y++) {
       for (int x = 0; x < SIZE; x++) {
         int c = board.at(x, y);
@@ -59,6 +62,7 @@ struct Evaluater {
         density += pn[cnt];
       }
     }
+
     int penalty = 0;
     /*
     for (int i = 0; i < N; i++) {
@@ -129,6 +133,7 @@ Answer Beam::solve(const Home &home, const int millisec,
                 nb.useTile(i);
                 if (vis.count(nb.hashv)) continue;
                 vis.insert(nb.hashv);
+#ifdef EVAL_DIFF
                 int e = b.eval;
                 for (int ty = 0; ty < 8; ty++) {
                   for (int tx = 0; tx < 8; tx++) {
@@ -163,6 +168,7 @@ Answer Beam::solve(const Home &home, const int millisec,
                 e -= tile.zk;
                 e += nb.maxi - b.maxi;
                 nb.eval = e;
+#endif
                 nxt.emplace_back(std::move(nb));
               }
             }
@@ -184,7 +190,9 @@ Answer Beam::solve(const Home &home, const int millisec,
     }
 
     if (nxt.size() > BEAM_WIDTH) {
-      // benchmark("eval") { std::for_each(nxt.begin(), nxt.end(), evalf); }
+#ifndef EVAL_DIFF
+      benchmark("eval") { std::for_each(nxt.begin(), nxt.end(), evalf); }
+#endif
       std::partial_sort(nxt.begin(), nxt.begin() + BEAM_WIDTH, nxt.end());
       nxt.erase(nxt.begin() + BEAM_WIDTH, nxt.end());
     }
@@ -192,6 +200,7 @@ Answer Beam::solve(const Home &home, const int millisec,
     util::dumpBoard(best);
   }
   util::dumpBoard(best, true);
+  getAns(home, best);
   return Answer();
 }
 
