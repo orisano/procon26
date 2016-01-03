@@ -6,17 +6,22 @@
 using namespace procon26;
 using namespace std;
 
-int main(int argc, const char** argv)
-{
+int main(int argc, char** argv) {
   Home home = Home();
-  string filepath;
-  
-  if (argc > 1) filepath = string(argv[1]);
-  else cout << "filepath:", cin >> filepath;
+  takumi::BitBeam solver;
+
+  cmdline::parser parser = takumi::BitBeam::getParser();
+  parser.add<string>("filepath", 'f', "quest filepath", true);
+  parser.add<int>("time", 't', "time", false, 540);
+
+  parser.parse_check(argc, argv);
+
+  const string filepath = parser.get<string>("filepath");
+  const int millisec = parser.get<int>("time");
+
   home.load(filepath);
 
-  takumi::BitBeam solver;
-  solver.solve(home, 10000);
+  solver.solve(home, millisec, parser);
 
   return 0;
 }

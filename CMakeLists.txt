@@ -5,13 +5,17 @@ project(2015)
 #set(CMAKE_CXX_COMPILER_ARG1 "clang++")
 set(CMAKE_CXX_COMPILER g++-5)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY bin)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1y -O3 -msse -Wall -ltcmalloc")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1y -O3 -msse -march=corei7 -Wall -ltcmalloc -DNDEBUG -D_GLIBCXX_PARALLEL -fopenmp -pipe")
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1y -O3 -msse -march=corei7 -Wall -ltcmalloc -DNDEBUG -pipe")
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1y -msse -Wall -ltcmalloc -DNDEBUG -pipe")
 
 set(BOARD_TILE
     Board.cpp
     Board.hpp
     Tile.cpp
-    Tile.hpp)
+    Tile.hpp
+    CacheTile.hpp
+    )
 
 set(BIT_BOARD_TILE
     ${BOARD_TILE}
@@ -27,37 +31,51 @@ set(CORE_FILES
     Home.cpp
     Home.hpp
     Takumi/Takumi.hpp
-    Takumi/ZobristHash.hpp)
+    Takumi/ZobristHash.hpp
+    getAnswers.cpp)
 
 
 set(BEAM_SOURCE_FILES
     ${CORE_FILES}
-    ${BOARD_TILE}
+    ${BIT_BOARD_TILE}
     Takumi/Beam.cpp
     Takumi/Beam.hpp
-    CacheTile.hpp
     BeamMain.cpp)
+
+  set(BIT_BOARD_TEST_FIlES
+    ${CORE_FILES}
+    ${BIT_BOARD_TILE}
+    Test/BitBoardTest.cpp)
 
 set(BIT_BEAM_SOURCE_FILES
     ${CORE_FILES}
     ${BIT_BOARD_TILE}
     Takumi/BitBeam.cpp
     Takumi/BitBeam.hpp
-    CacheTile.hpp
     BitBeamMain.cpp)
 
 set(GET_ANS_SOURCE_FILES
     ${CORE_FILES}
     ${BOARD_TILE}
-    CacheTile.hpp
+    BitBoard.cpp
+    BitTile.cpp
     getAnswer.cpp)
 
-set(BIT_BOARD_TEST_FILES
+  set(JIN_SOURCE_FILES
+    ${CORE_FILES}
     ${BIT_BOARD_TILE}
-    Test/BitBoardTest.cpp)
+    Takumi/Jin.cpp
+    Takumi/Jin.hpp
+    JinMain.cpp)
 
-add_executable(Beam ${BEAM_SOURCE_FILES})
+  set(INTERACTIVE_TEST_SOURCE_FILES
+    ${CORE_FILES}
+    ${BIT_BOARD_TILE}
+    Test/BitBoardInteractive.cpp)
+
 add_executable(getAns ${GET_ANS_SOURCE_FILES})
+add_executable(Beam ${BEAM_SOURCE_FILES})
 add_executable(BitBeam ${BIT_BEAM_SOURCE_FILES})
-add_executable(BitBoardTest ${BIT_BOARD_TEST_FILES})
-#add_executable(LinkedTileTest NewCppClass.cpp NewCppClass.h)
+add_executable(Jin ${JIN_SOURCE_FILES})
+add_executable(BitBoardTest ${BIT_BOARD_TEST_FIlES})
+add_executable(InteractiveTest ${INTERACTIVE_TEST_SOURCE_FILES})
