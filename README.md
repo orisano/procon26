@@ -1,7 +1,7 @@
 # procon26
 第26回高専プロコン競技部門のソルバー
 
-[ルール詳細](http://www.procon.gr.jp/uploads/procon26/Apply26.pdf)
+[ルール詳細](http://www.procon.gr.jp/wp-content/uploads//2016/12/No.26_recruitment_nagano.pdf)
 
 ## 使用したライブラリ
 * [tcmalloc](https://github.com/gperftools/gperftools)
